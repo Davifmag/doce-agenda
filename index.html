@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Agenda de Doces</title>
+<meta name="theme-color" content="#A5265E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Agenda de Doces">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app" id="app"></div>
+<div class="bar">
+  <div>
+    <button class="tab" id="t-agenda">Agenda</button>
+    <button class="fab" id="fab" aria-label="Novo registro">+</button>
+    <button class="tab" id="t-pedidos">Pedidos</button>
+  </div>
+</div>
+<div class="ov" id="ov">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sh-t">
+    <h2 id="sh-t" style="margin-top:0">Novo registro</h2>
+    <div class="seg" id="seg">
+      <button data-k="orc" class="on">Orçamento</button>
+      <button data-k="comp">Compromisso</button>
+    </div>
+    <label id="l-nome" for="f-nome">Cliente</label>
+    <input id="f-nome" autocomplete="off">
+    <div class="orc">
+      <label for="f-tel">WhatsApp</label>
+      <input id="f-tel" type="tel" placeholder="(17) 90000-0000">
+    </div>
+    <div class="orc">
+      <label for="f-tipo">Tipo de evento</label>
+      <select id="f-tipo">
+        <option>Casamento</option>
+        <option>15 anos</option>
+        <option>Aniversário</option>
+        <option>Corporativo</option>
+        <option>Outro</option>
+      </select>
+    </div>
+    <div class="row">
+      <div>
+        <label for="f-data">Data</label>
+        <input id="f-data" type="date">
+      </div>
+      <div>
+        <label for="f-hora">Horário</label>
+        <input id="f-hora" type="time">
+      </div>
+    </div>
+    <div class="orc row">
+      <div>
+        <label for="f-conv">Convidados</label>
+        <input id="f-conv" type="number" min="0" inputmode="numeric">
+      </div>
+      <div>
+        <label for="f-valor">Valor (R$)</label>
+        <input id="f-valor" type="number" min="0" step="0.01" inputmode="decimal">
+      </div>
+    </div>  
+    <div class="orc">
+      <label for="f-status">Situação</label>
+      <select id="f-status">
+        <option>Novo</option>
+        <option>Orçado</option>
+        <option>Confirmado</option>
+        <option>Recusado</option>
+      </select>
+    </div>
+    <label for="f-desc">Detalhes</label>
+    <textarea id="f-desc" rows="3" placeholder="Ex.: 200 brigadeiros gourmet, 100 cupcakes"></textarea>
+    <div class="alert hide" id="alert"></div>
+    <div class="acts">
+      <button class="btn del hide" id="b-del">Excluir</button>
+      <button class="btn" id="b-cancel">Cancelar</button>
+      <button class="btn pri" id="b-save">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
