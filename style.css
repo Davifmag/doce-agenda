@@ -138,8 +138,12 @@ textarea:focus-visible {
 }
 
 .cal-h strong {
-    font:600 18px Fraunces,Georgia,serif;
-    text-transform:capitalize
+    font:600 18px Fraunces,Georgia,serif
+    /*text-transform:capitalize*/
+}
+
+.cal-h strong::first-letter {
+    text-transform: uppercase;
 }
 
 .nav {
@@ -235,7 +239,11 @@ textarea:focus-visible {
 h2 {
     font:600 20px Fraunces,Georgia,serif;
     margin:20px 0 8px;
-    text-transform:capitalize
+    /*text-transform:capitalize*/
+}
+
+h2::first-letter {
+    text-transform: uppercase;
 }
 
 .item {

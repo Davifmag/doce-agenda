@@ -8,11 +8,11 @@ const dlong=s=>pd(s).toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',mo
 const dshort=s=>pd(s).toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
 
 let items=(()=>{try{const r=localStorage.getItem(K);if(r)return JSON.parse(r)}catch(e){}
-return [
+return [/*
 {id:1,kind:'orc',nome:'Camila e Rafael',tel:'',tipo:'Casamento',data:plus(6),hora:'18:00',conv:150,valor:3200,status:'Confirmado',desc:'300 doces finos, bolo de 3 andares'},
 {id:2,kind:'orc',nome:'Helena (15 anos)',tel:'',tipo:'15 anos',data:plus(6),hora:'20:00',conv:80,valor:1800,status:'Novo',desc:'Mesa de doces rosa e dourado'},
 {id:3,kind:'comp',nome:'Comprar insumos',tel:'',tipo:'',data:plus(3),hora:'09:00',desc:'Chocolate, leite condensado, embalagens'},
-{id:4,kind:'orc',nome:'Marcos',tel:'',tipo:'Aniversário',data:plus(20),hora:'15:00',conv:40,valor:650,status:'Orçado',desc:'Cento de brigadeiros e cupcakes'}]})();
+{id:4,kind:'orc',nome:'Marcos',tel:'',tipo:'Aniversário',data:plus(20),hora:'15:00',conv:40,valor:650,status:'Orçado',desc:'Cento de brigadeiros e cupcakes'}*/]})();
 const save=()=>{try{localStorage.setItem(K,JSON.stringify(items))}catch(e){}};
 
 const now=new Date();
