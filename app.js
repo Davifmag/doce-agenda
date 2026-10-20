@@ -64,7 +64,37 @@ function viewPedidos(){
   const open=items.filter(o=>o.kind==='orc'&&(o.status==='Novo'||o.status==='Orçado')).length;
   return `<h1>Pedidos</h1><p class="sub">${open?open+' aguardando resposta':'Nenhum orçamento em aberto'}</p>
   <div class="chips">${F.map(f=>`<button class="chip${f===filter?' on':''}" data-f="${f}">${f}</button>`).join('')}</div>
-  ${L.length?L.map(card).join(''):'<div class="empty">Nenhum pedido nesta situação.</div>'}`;
+  ${L.length?L.map(card).join(''):'<div class="empty">Nenhum pedido nesta situação.</div>'}
+  <h2>Backup</h2>
+  <p class="sub">Salve uma cópia dos seus dados ou restaure de um arquivo.</p>
+  <div class="acts"><button class="btn" id="b-exp">Exportar</button><button class="btn" id="b-imp">Importar</button></div>`;
+}
+
+function exportar(){
+  const dados={app:'agenda-de-doces',versao:1,exportadoEm:new Date().toISOString(),itens:items};
+  const blob=new Blob([JSON.stringify(dados,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='doces-backup-'+iso(new Date())+'.json';
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+
+function importar(file){
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const d=JSON.parse(r.result);
+      if(d.app!=='agenda-de-doces'||!Array.isArray(d.itens))throw new Error('formato');
+      const ok=d.itens.filter(o=>o&&o.id&&o.nome&&/^\d{4}-\d{2}-\d{2}$/.test(o.data));
+      const mapa=new Map(items.map(o=>[o.id,o]));
+      ok.forEach(o=>mapa.set(o.id,o));
+      items=[...mapa.values()];
+      save();render();
+      alert(ok.length+' registros importados.');
+    }catch(e){alert('Arquivo inválido. Escolha um backup gerado por este app.')}
+  };
+  r.readAsText(file);
 }
 
 /* formulário */
@@ -109,6 +139,15 @@ $('#app').onclick=e=>{
   else if(t.dataset.m){vm+=+t.dataset.m;if(vm<0){vm=11;vy--}if(vm>11){vm=0;vy++}render()}
   else if(t.dataset.f){filter=t.dataset.f;render()}
 };
+
+document.addEventListener('click',e=>{
+  if(e.target.closest('#b-exp'))exportar();
+  if(e.target.closest('#b-imp'))$('#f-imp').click();
+});
+$('#f-imp').addEventListener('change',e=>{
+  if(e.target.files[0])importar(e.target.files[0]);
+  e.target.value='';
+});
 render();
 
 /* PWA: registra o service worker (funciona offline) */
