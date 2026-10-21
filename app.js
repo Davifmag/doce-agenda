@@ -38,7 +38,14 @@ const now=new Date();
 let tab='agenda',filter='Todos',sel=iso(now),vy=now.getFullYear(),vm=now.getMonth(),editing=null,kind='orc';
 
 const busy=o=>o.kind==='comp'||o.status==='Confirmado';
-const clashes=o=>o.status==='Recusado'?[]:items.filter(x=>x.id!==o.id&&x.data===o.data&&busy(x));
+const MARGEM_MIN=180; // distância mínima entre eventos, em minutos
+const toMin=h=>/^\d{2}:\d{2}$/.test(h||'')?+h.slice(0,2)*60+ +h.slice(3):null;
+const sobrepoe=(a,b)=>{
+  const x=toMin(a.hora),y=toMin(b.hora);
+  if(x===null||y===null)return true; //sem horário: considera o dia inteiro
+  return Math.abs(x-y)<MARGEM_MIN;
+};
+const clashes=o=>o.status==='Recusado'?[]:items.filter(x=>x.id!==o.id&&x.data===o.data&&busy(x)&&sobrepoe(o,x));
 const byDay=d=>items.filter(x=>x.data===d).sort((a,b)=>(a.hora||'').localeCompare(b.hora||''));
 
 function card(o){
@@ -64,7 +71,7 @@ function viewAgenda(){
   let g=['D','S','T','Q','Q','S','S'].map(w=>`<div class="wd">${w}</div>`).join('');
   for(let i=0;i<first.getDay();i++)g+='<div></div>';
   for(let d=1;d<=last;d++){
-    const k=iso(new Date(vy,vm,d)),L=byDay(k),b=L.filter(busy).length>1||(L.some(busy)&&L.some(x=>!busy(x)&&x.status!=='Recusado'));
+    const k=iso(new Date(vy,vm,d)),L=byDay(k),b=L.some(o=>clashes(o).length>0);
     const dots=L.slice(0,3).map(o=>`<span class="dot ${o.kind==='comp'?'d-comp':o.status==='Confirmado'?'d-conf':'d-pend'}"></span>`).join('');
     g+=`<button class="day${k===today?' today':''}${k===sel?' sel':''}${b?' clash':''}" data-d="${k}" aria-label="${dlong(k)}">${d}<span class="dots">${dots}</span></button>`;
   }
@@ -120,7 +127,7 @@ function importar(file){
 function setKind(k){kind=k;document.querySelectorAll('#seg button').forEach(b=>b.classList.toggle('on',b.dataset.k===k));
   document.querySelectorAll('.orc').forEach(e=>e.classList.toggle('hide',k==='comp'));
   $('#l-nome').textContent=k==='orc'?'Cliente':'Compromisso';check()}
-function draft(){return {id:editing?editing.id:-1,kind,data:brIso($('#f-data').value),status:kind==='orc'?$('#f-status').value:'Compromisso'}}
+function draft(){return {id:editing?editing.id:-1,kind,data:brIso($('#f-data').value),hora:$('#f-hora').value,status:kind==='orc'?$('#f-status').value:'Compromisso'}}
 function check(){const d=draft(),a=$('#alert');
   const c=d.data?clashes(d):[];
   if(c.length){a.innerHTML='<b>Data já ocupada:</b> '+c.map(x=>esc(x.nome)+(x.hora?' ('+x.hora+')':'')).join(', ')+'. Você ainda pode salvar.';a.classList.remove('hide')}else a.classList.add('hide')}
@@ -170,7 +177,7 @@ $('#f-imp').addEventListener('change',e=>{
 
 $('#f-tel').addEventListener('input',e=>{e.target.value=maskTel(e.target.value)});
 $('#f-data').addEventListener('input',e=>{e.target.value=maskData(e.target.value);check()});
-$('#f-hora').addEventListener('input',e=>{e.target.value=maskHora(e.target.value)});
+$('#f-hora').addEventListener('input',e=>{e.target.value=maskHora(e.target.value);check()});
 $('#f-valor').addEventListener('input',e=>{e.target.value=maskValor(e.target.value)});
 render();
 
