@@ -49,11 +49,11 @@
     <div class="row">
       <div>
         <label for="f-data">Data</label>
-        <input id="f-data" type="date">
+        <input id="f-data" type="text" inputmode="numeric" placeholder="dd/mm/aaaa" maxlength="10" autocomplete="off">
       </div>
       <div>
         <label for="f-hora">Horário</label>
-        <input id="f-hora" type="time">
+        <input id="f-hora" type="text" inputmode="numeric" placeholder="hh:mm" maxlength="5" autocomplete="off">
       </div>
     </div>
     <div class="orc row">
@@ -63,7 +63,7 @@
       </div>
       <div>
         <label for="f-valor">Valor (R$)</label>
-        <input id="f-valor" type="number" min="0" step="0.01" inputmode="decimal">
+        <input id="f-valor" type="text" inputmode="decimal" placeholder="0,00" autocomplete="off" min="0" step="0.01">
       </div>
     </div>  
     <div class="orc">

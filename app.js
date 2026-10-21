@@ -6,6 +6,18 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 const brl=v=>v?Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}):'';
 const dlong=s=>pd(s).toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'});
 const dshort=s=>pd(s).toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
+const maskTel=v=>{v=v.replace(/\D/g,'').slice(0,11);
+  if(v.length>10)return v.replace(/(\d{2})(\d{5})(\d{0,4})/,'($1) $2-$3');
+  if(v.length>6)return v.replace(/(\d{2})(\d{4})(\d{0,4})/,'($1) $2-$3');
+  if(v.length>2)return v.replace(/(\d{2})(\d{0,5})/,'($1) $2');
+  return v.length?'('+v:v};
+const maskData=v=>{v=v.replace(/\D/g,'').slice(0,8);
+  return v.length>4?v.slice(0,2)+'/'+v.slice(2,4)+'/'+v.slice(4):v.length>2?v.slice(0,2)+'/'+v.slice(2):v};
+const maskHora=v=>{v=v.replace(/\D/g,'').slice(0,4); return v.length>2?v.slice(0,2)+':'+v.slice(2):v};
+const maskValor=v=>{v=v.replace(/[^\d,]/g,''); const i=v.indexOf(',');
+  let int=i<0?v:v.slice(0,i),dec=i<0?null:v.slice(i+1).replace(/,/g,'').slice(0,2);
+  int=int.replace(/^0+(?=\d)/,'').replace(/\B(?=(\d{3})+(?!\d))/g,'');
+  return dec===null?int:int+','+dec};
 
 let items=(()=>{try{const r=localStorage.getItem(K);if(r)return JSON.parse(r)}catch(e){}
 return [/*
