@@ -25,6 +25,16 @@ const isoBr=s=>s?s.split('-').reverse().join('/'):'';
 const horaOk=s=>s===''||/^([01]\d|2[0-3]):[0-5]\d$/.test(s);
 const valorNum=s=>s?parseFloat(s.replace(/\./g,'').replace(',','.'))||0:0;
 const numValor=n=>n?Number(n).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'';
+const pagto=o=>{
+  const v=+o.valor||0,s=+o.sinal||0;
+  if(!v)return null;
+  const saldo=Math.max(v-s,0);
+  return {saldo,txt:s>=v?'Quitado':s>0?'Sinal pago · falta '+brl(saldo):'Sem sinal'};
+};
+function atualizarSaldo() {
+  const v=valorNum($('#f-valor').value),s=valorNum($('#f-sinal').value);
+  $('#saldo').textContent=v?(s>=v?'Pago por completo':'Saldo a receber: '+brl(v-s)):'';
+}
 
 let items=(()=>{try{const r=localStorage.getItem(K);if(r)return JSON.parse(r)}catch(e){}
 return [/*
@@ -49,10 +59,12 @@ const clashes=o=>o.status==='Recusado'?[]:items.filter(x=>x.id!==o.id&&x.data===
 const byDay=d=>items.filter(x=>x.data===d).sort((a,b)=>(a.hora||'').localeCompare(b.hora||''));
 
 function card(o){
+  const p=o.kind==='orc'&&o.status!=='Recusado'?pagto(o):null;
   const c=clashes(o).length,st=o.kind==='comp'?'Compromisso':o.status;
   return `<button class="item" data-id="${o.id}"><div class="top"><div><b>${esc(o.nome)}</b>
   <div class="meta">${o.kind==='orc'?esc(o.tipo)+' · ':''}${dshort(o.data)}${o.hora?' às '+o.hora:''}${o.valor?' · '+brl(o.valor):''}</div></div>
   <span class="badge s-${st}">${st}</span></div>
+  ${p?'<div class="meta">'+p.txt+'</div>':''}
   ${c?'<div class="warn">Atenção: há outro compromisso nesta data</div>':''}</button>`;
 }
 
@@ -88,7 +100,8 @@ function viewPedidos(){
   const F=['Todos','Novo','Orçado','Confirmado','Recusado'];
   const L=items.filter(o=>o.kind==='orc'&&(filter==='Todos'||o.status===filter)).sort((a,b)=>a.data.localeCompare(b.data));
   const open=items.filter(o=>o.kind==='orc'&&(o.status==='Novo'||o.status==='Orçado')).length;
-  return `<h1>Pedidos</h1><p class="sub">${open?open+' aguardando resposta':'Nenhum orçamento em aberto'}</p>
+  const areceber=items.filter(o=>o.kind==='orc'&&o.status==='Confirmado').reduce((t,o)=>t+(pagto(o)?pagto(o).saldo:0),0);
+  return `<h1>Pedidos</h1><p class="sub">${open?open+' aguardando resposta':'Nenhum orçamento em aberto'}${areceber?' · A receber: '+brl(areceber):''}</p>
   <div class="chips">${F.map(f=>`<button class="chip${f===filter?' on':''}" data-f="${f}">${f}</button>`).join('')}</div>
   ${L.length?L.map(card).join(''):'<div class="empty">Nenhum pedido nesta situação.</div>'}
   <h2>Backup</h2>
@@ -137,7 +150,7 @@ function openSheet(o){
   $('#f-nome').value=o?o.nome:'';$('#f-tel').value=maskTel(o?o.tel||'':'');$('#f-tipo').value=o&&o.tipo?o.tipo:'Casamento';
   $('#f-data').value=isoBr(o?o.data:sel);$('#f-hora').value=o?o.hora||'':'';$('#f-conv').value=o&&o.conv||'';
   $('#f-valor').value=o&&o.valor?numValor(o.valor):'';$('#f-status').value=o&&o.status||'Novo';$('#f-desc').value=o?o.desc||'':'';
-  $('#b-del').classList.toggle('hide',!o);check();$('#ov').classList.add('open');setTimeout(()=>$('#f-nome').focus(),50);
+  $('#b-del').classList.toggle('hide',!o);$('#f-sinal').value=o&&o.sinal?numValor(o.sinal):'';atualizarSaldo();check();$('#ov').classList.add('open');setTimeout(()=>$('#f-nome').focus(),50);
 }
 const closeSheet=()=>$('#ov').classList.remove('open');
 
@@ -153,7 +166,7 @@ $('#b-save').onclick=()=>{
   const nome=$('#f-nome').value.trim(),data=brIso($('#f-data').value),hora=$('#f-hora').value;
   if(!nome||!data||!horaOk(hora)){$('#alert').innerHTML='Preencha o nome, uma data válida (dd/mm/aaa) e, se quiser, um horário válido (hh:mm).';$('#alert').classList.remove('hide');return}
   const o={id:editing?editing.id:Date.now(),kind,nome,data,hora:$('#f-hora').value,desc:$('#f-desc').value.trim()};
-  if(kind==='orc')Object.assign(o,{tel:$('#f-tel').value.trim(),tipo:$('#f-tipo').value,conv:$('#f-conv').value,valor:valorNum($('#f-valor').value),status:$('#f-status').value});
+  if(kind==='orc')Object.assign(o,{tel:$('#f-tel').value.trim(),tipo:$('#f-tipo').value,conv:$('#f-conv').value,valor:valorNum($('#f-valor').value),sinal:valorNum($('#f-sinal').value),status:$('#f-status').value});
   items=editing?items.map(x=>x.id===o.id?o:x):[...items,o];
   save();sel=data;const d=pd(data);vy=d.getFullYear();vm=d.getMonth();closeSheet();render();
 };
@@ -178,7 +191,10 @@ $('#f-imp').addEventListener('change',e=>{
 $('#f-tel').addEventListener('input',e=>{e.target.value=maskTel(e.target.value)});
 $('#f-data').addEventListener('input',e=>{e.target.value=maskData(e.target.value);check()});
 $('#f-hora').addEventListener('input',e=>{e.target.value=maskHora(e.target.value);check()});
-$('#f-valor').addEventListener('input',e=>{e.target.value=maskValor(e.target.value)});
+$('#f-valor').addEventListener('input',e=>{e.target.value=maskValor(e.target.value);atualizarSaldo()});
+$('#f-sinal').addEventListener('input',e=>{e.target.value=maskValor(e.target.value);atualizarSaldo()});
+$('#b-50').onclick=()=>{const v=valorNum($('#f-valor').value); if(v){$('#f-sinal').value=numValor(v/2);atualizarSaldo()}};
+$('#b-quit').onclick=()=>{const v=valorNum($('#f-valor').value); if(v){$('#f-sinal').value=numValor(v);atualizarSaldo()}};
 render();
 
 /* PWA: registra o service worker (funciona offline) */

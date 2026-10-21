@@ -67,6 +67,15 @@
       </div>
     </div>  
     <div class="orc">
+      <label for="f-sinal">Sinal pago (R$)</label>
+      <div style="display: flex; gap: 8px;">
+        <input type="text" id="f-sinal" inputmode="decimal" placeholder="0,00" autocomplete="off">
+        <button type="button" class="btn" id="b-50" style="flex: 0 0 auto;">50%</button>
+        <button type="button" class="btn" id="b-quit" style="flex: 0 0 auto;">Quitar</button>
+      </div>
+      <div class="meta" id="saldo"></div>
+    </div>
+    <div class="orc">
       <label for="f-status">Situação</label>
       <select id="f-status">
         <option>Novo</option>
