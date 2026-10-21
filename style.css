@@ -512,3 +512,27 @@ textarea {
         }
     }
 }
+
+.irow {
+    display: grid;
+    grid-template-columns: 58px 1fr 82px 32px;
+    gap: 6px;
+    margin-bottom: 6px
+}
+
+.irow input {
+    padding: 10px 8px
+}
+
+.irow .x {
+    border: 1px solid var(--line);
+    background: var(--card);
+    border-radius: 12px;
+    color: var(--red);
+    font-size: 20px;
+    line-height: 1;
+}
+
+input [readonly]{
+    opacity: .75;
+}

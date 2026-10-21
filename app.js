@@ -36,6 +36,29 @@ function atualizarSaldo() {
   $('#saldo').textContent=v?(s>=v?'Pago por completo':'Saldo a receber: '+brl(v-s)):'';
 }
 
+/* itens do pedido */
+function addItem(it) {
+  it=it||{};
+  const r=document.createElement('div');r.className='irow';
+  r.innerHTML='<input class="i-q" inputmode="numeric" placeholder="Qtd" aria-label="Quantidade"><input class="i-d" placeholder="Doce" aria-label="Descrição" autocomplete="off"><input class="i-u" inputmode="decimal" placeholder="Unit." aria-label="Valor unitário"><button type="button" class="x" aria-label="Remover item">×</button>';
+  r.queySelector('.i-q').value=it.q||'';
+  r.queySelector('.i-d').value=it.d||'';
+  r.queySelector('.i-u').value=it.u?numValor(it.u):'';
+  $('#itens').appendChild(r);
+}
+const lerItens=()=>[...document.querySelectorAll('#itens .irow')].map(r=>({
+  q:parseInt(r.querySelector('.i-q').value)||0,
+  d:r.querySelector('.i-d').value.trim(),
+  u:valorNum(r.querySelector('.i-u').value)
+})).filter(i=>i.d||i.q);
+function recalc(){
+  const total=Math.round(lerItens().reduce((t,i)=>t+i.q*i.u,0)*100)/100,v=$('#f-valor');
+  v.readOnly=total>0;
+  if(total>0)v.value=numValor(total);
+  atualizarSaldo();
+}
+const hAg=o=>o.entrega||o.hora; // horário que vale para a agenda
+
 let items=(()=>{try{const r=localStorage.getItem(K);if(r)return JSON.parse(r)}catch(e){}
 return [/*
 {id:1,kind:'orc',nome:'Camila e Rafael',tel:'',tipo:'Casamento',data:plus(6),hora:'18:00',conv:150,valor:3200,status:'Confirmado',desc:'300 doces finos, bolo de 3 andares'},
@@ -51,7 +74,7 @@ const busy=o=>o.kind==='comp'||o.status==='Confirmado';
 const MARGEM_MIN=180; // distância mínima entre eventos, em minutos
 const toMin=h=>/^\d{2}:\d{2}$/.test(h||'')?+h.slice(0,2)*60+ +h.slice(3):null;
 const sobrepoe=(a,b)=>{
-  const x=toMin(a.hora),y=toMin(b.hora);
+  const x=toMin(hAg(a)),y=toMin(hAg(b));
   if(x===null||y===null)return true; //sem horário: considera o dia inteiro
   return Math.abs(x-y)<MARGEM_MIN;
 };

@@ -56,16 +56,23 @@
         <input id="f-hora" type="text" inputmode="numeric" placeholder="hh:mm" maxlength="5" autocomplete="off">
       </div>
     </div>
+    <div class="orc">
+      <label>Itens do pedido</label>
+      <div id="itens"></div>
+      <button type="button" class="btn" id="b-additem" style="width: 100%;">+ Adicionar item</button>
+    </div>
     <div class="orc row">
       <div>
         <label for="f-conv">Convidados</label>
         <input id="f-conv" type="number" min="0" inputmode="numeric">
       </div>
       <div>
-        <label for="f-valor">Valor (R$)</label>
+        <label for="f-valor">Valor(R$)</label>
         <input id="f-valor" type="text" inputmode="decimal" placeholder="0,00" autocomplete="off">
       </div>
     </div>  
+    <div class="orc"><label for="f-local">Local e endereço da entrega</label><input id="f-local" autocomplete="off"></div>
+    <div class="orc"><label for="f-entrega">Horário de entrega</label><input id="f-entrega" type="text" inputmode="numeric" placeholder="hh:mm" maxlength="5" autocomplete="off"></div>
     <div class="orc">
       <label for="f-sinal">Sinal pago (R$)</label>
       <div style="display: flex; gap: 8px;">
