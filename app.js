@@ -18,6 +18,13 @@ const maskValor=v=>{v=v.replace(/[^\d,]/g,''); const i=v.indexOf(',');
   let int=i<0?v:v.slice(0,i),dec=i<0?null:v.slice(i+1).replace(/,/g,'').slice(0,2);
   int=int.replace(/^0+(?=\d)/,'').replace(/\B(?=(\d{3})+(?!\d))/g,'');
   return dec===null?int:int+','+dec};
+const brIso=s=>{const m=/^(\d{2})\/(\d{2})\/(\d{4})$/.exec(s);if(!m)return'';
+  const d=new Date(+m[3],+m[2]-1,+m[1]);
+  return d.getFullYear()==m[3]&&d.getMonth()==m[2]-1&&d.getDate()==m[1]?m[3]+'-'+m[2]+'-'+m[1]:''};
+const isoBr=s=>s?s.split('-').reverse().join('/'):'';
+const horaOk=s=>s===''||/^([01]\d|2[0-3]):[0-5]\d$/.test(s);
+const valorNum=s=>s?parseFloat(s.replace(/\./g,'').replace(',','.'))||0:0;
+const numValor=n=>n?Number(n).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'';
 
 let items=(()=>{try{const r=localStorage.getItem(K);if(r)return JSON.parse(r)}catch(e){}
 return [/*
@@ -113,16 +120,16 @@ function importar(file){
 function setKind(k){kind=k;document.querySelectorAll('#seg button').forEach(b=>b.classList.toggle('on',b.dataset.k===k));
   document.querySelectorAll('.orc').forEach(e=>e.classList.toggle('hide',k==='comp'));
   $('#l-nome').textContent=k==='orc'?'Cliente':'Compromisso';check()}
-function draft(){return {id:editing?editing.id:-1,kind,data:$('#f-data').value,status:kind==='orc'?$('#f-status').value:'Compromisso'}}
+function draft(){return {id:editing?editing.id:-1,kind,data:brIso($('#f-data').value),status:kind==='orc'?$('#f-status').value:'Compromisso'}}
 function check(){const d=draft(),a=$('#alert');
   const c=d.data?clashes(d):[];
   if(c.length){a.innerHTML='<b>Data já ocupada:</b> '+c.map(x=>esc(x.nome)+(x.hora?' ('+x.hora+')':'')).join(', ')+'. Você ainda pode salvar.';a.classList.remove('hide')}else a.classList.add('hide')}
 function openSheet(o){
   editing=o||null;$('#sh-t').textContent=o?'Editar':'Novo registro';
   setKind(o?o.kind:'orc');
-  $('#f-nome').value=o?o.nome:'';$('#f-tel').value=o?o.tel||'':'';$('#f-tipo').value=o&&o.tipo?o.tipo:'Casamento';
-  $('#f-data').value=o?o.data:sel;$('#f-hora').value=o?o.hora||'':'';$('#f-conv').value=o&&o.conv||'';
-  $('#f-valor').value=o&&o.valor||'';$('#f-status').value=o&&o.status||'Novo';$('#f-desc').value=o?o.desc||'':'';
+  $('#f-nome').value=o?o.nome:'';$('#f-tel').value=maskTel(o?o.tel||'':'');$('#f-tipo').value=o&&o.tipo?o.tipo:'Casamento';
+  $('#f-data').value=isoBr(o?o.data:sel);$('#f-hora').value=o?o.hora||'':'';$('#f-conv').value=o&&o.conv||'';
+  $('#f-valor').value=o&&o.valor?numValor(o.valor):'';$('#f-status').value=o&&o.status||'Novo';$('#f-desc').value=o?o.desc||'':'';
   $('#b-del').classList.toggle('hide',!o);check();$('#ov').classList.add('open');setTimeout(()=>$('#f-nome').focus(),50);
 }
 const closeSheet=()=>$('#ov').classList.remove('open');
@@ -136,10 +143,10 @@ $('#seg').onclick=e=>{if(e.target.dataset.k)setKind(e.target.dataset.k)};
 $('#t-agenda').onclick=()=>{tab='agenda';render()};
 $('#t-pedidos').onclick=()=>{tab='pedidos';render()};
 $('#b-save').onclick=()=>{
-  const nome=$('#f-nome').value.trim(),data=$('#f-data').value;
-  if(!nome||!data){$('#alert').innerHTML='Preencha o nome e a data para salvar.';$('#alert').classList.remove('hide');return}
+  const nome=$('#f-nome').value.trim(),data=brIso($('#f-data').value),hora=$('#f-hora').value;
+  if(!nome||!data||!horaOk(hora)){$('#alert').innerHTML='Preencha o nome, uma data válida (dd/mm/aaa) e, se quiser, um horário válido (hh:mm).';$('#alert').classList.remove('hide');return}
   const o={id:editing?editing.id:Date.now(),kind,nome,data,hora:$('#f-hora').value,desc:$('#f-desc').value.trim()};
-  if(kind==='orc')Object.assign(o,{tel:$('#f-tel').value.trim(),tipo:$('#f-tipo').value,conv:$('#f-conv').value,valor:$('#f-valor').value,status:$('#f-status').value});
+  if(kind==='orc')Object.assign(o,{tel:$('#f-tel').value.trim(),tipo:$('#f-tipo').value,conv:$('#f-conv').value,valor:valorNum($('#f-valor').value),status:$('#f-status').value});
   items=editing?items.map(x=>x.id===o.id?o:x):[...items,o];
   save();sel=data;const d=pd(data);vy=d.getFullYear();vm=d.getMonth();closeSheet();render();
 };
@@ -160,6 +167,11 @@ $('#f-imp').addEventListener('change',e=>{
   if(e.target.files[0])importar(e.target.files[0]);
   e.target.value='';
 });
+
+$('#f-tel').addEventListener('input',e=>{e.target.value=maskTel(e.target.value)});
+$('#f-data').addEventListener('input',e=>{e.target.value=maskData(e.target.value);check()});
+$('#f-hora').addEventListener('input',e=>{e.target.value=maskHora(e.target.value)});
+$('#f-valor').addEventListener('input',e=>{e.target.value=maskValor(e.target.value)});
 render();
 
 /* PWA: registra o service worker (funciona offline) */
