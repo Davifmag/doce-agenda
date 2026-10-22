@@ -73,17 +73,26 @@
     </div>  
     <div class="orc"><label for="f-local">Local e endereço da entrega</label><input id="f-local" autocomplete="off"></div>
     <div class="orc"><label for="f-entrega">Horário de entrega</label><input id="f-entrega" type="text" inputmode="numeric" placeholder="hh:mm" maxlength="5" autocomplete="off"></div>
-    <div class="orc">
+    <!--<div class="orc">
       <label for="f-sinal">Sinal pago (R$)</label>
       <div style="display: flex; gap: 8px;">
         <input type="text" id="f-sinal" inputmode="decimal" placeholder="0,00" autocomplete="off">
-        <button type="button" class="btn" id="b-50" style="flex: 0 0 auto;">50%</button>
+        <button type="button" class="btn" id="b-50" style="flex: 0 0 auto;">30%</button>
+        <button type="button" class="btn" id="b-quit" style="flex: 0 0 auto;">Quitar</button>
+      </div>
+      <div class="meta" id="saldo"></div>
+    </div>-->
+    <div class="orc">
+      <label for="f-sinal">Sinal (valor e porcentagem)</label>
+      <div style="display: flex;gap: 8px;align-items: center;">
+        <input type="text" id="f-sinal" inputmode="decimal" placeholder="R$0,00" autocomplete="off" aria-label="Valor do sinal em reais">
+        <input type="text" id="f-pct" inputmode="decimal" placeholder="%" autocomplete="off" aria-label="Porcentagem do sinal" style="width: 90px;flex: 0 0 90px;">
         <button type="button" class="btn" id="b-quit" style="flex: 0 0 auto;">Quitar</button>
       </div>
       <div class="meta" id="saldo"></div>
     </div>
     <div class="orc">
-      <label for="f-status">Situação</label>
+      <label for="f-status">Status</label>
       <select id="f-status">
         <option>Novo</option>
         <option>Orçado</option>
@@ -93,6 +102,7 @@
     </div>
     <label for="f-desc">Detalhes</label>
     <textarea id="f-desc" rows="3" placeholder="Ex.: 200 brigadeiros gourmet, 100 cupcakes"></textarea>
+    <button type="button" class="btn orc" id="b-wpp" style="width: 100%;margin-top: 14px;">Enviar orçamento pelo WhatsApp</button>
     <div class="alert hide" id="alert"></div>
     <div class="acts">
       <button class="btn del hide" id="b-del">Excluir</button>

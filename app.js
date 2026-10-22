@@ -29,11 +29,81 @@ const pagto=o=>{
   const v=+o.valor||0,s=+o.sinal||0;
   if(!v)return null;
   const saldo=Math.max(v-s,0);
-  return {saldo,txt:s>=v?'Quitado':s>0?'Sinal pago · falta '+brl(saldo):'Sem sinal'};
+  return {saldo,venc:vencSaldo(o.data),txt:s>=v?'Quitado':s>0?'Sinal pago · falta '+brl(saldo):'Sem sinal'};
 };
+const EMO_SMILE='\u{1F60A}' //😊
+const EMO_CUPCAKE='\u{1F9C1}' //🧁
+
 function atualizarSaldo() {
-  const v=valorNum($('#f-valor').value),s=valorNum($('#f-sinal').value);
-  $('#saldo').textContent=v?(s>=v?'Pago por completo':'Saldo a receber: '+brl(v-s)):'';
+  const v=valorNum($('#f-valor').value),s=valorNum($('#f-sinal').value),d=brIso($('#f-data').value);
+  $('#saldo').textContent=v?(s>=v?'Pago por completo':'Saldo a receber: '+brl(v-s)+(d?' · até '+dshort(vencSaldo(d)):'')):'';
+}
+
+/* sinal: valor e porcentagem sincronizados */
+let sinalModo='val'; // 'val' = o usuário digitou o valor; 'pct' = digitou a porcentagem
+const pctNum=s=>parseFloat((s||'').replace(',','.'))||0;
+const fmtPct=n=>n?String(Math.round(n*100)/100).replace('.',','):'';
+const maskPct=v=>{
+  v=v.replace(/[^\d,]/g,'');const i=v.indexOf(',');
+  let int=i<0?v:v.slice(0,i),dec=i<0?null:v.slice(i+1).replace(/,/g,'').slice(0,2);
+  int=int.replace(/^0+(?=\d)/,'').slice(0,3);
+  const r=dec===null?int:int+','+dec;
+  return pctNum(r)>100?'100':r;
+};
+function sincSinal() {
+  const v=valorNum($('#f-valor').value);
+  if(sinalModo==='pct'){
+    const p=pctNum($('#f-pct').value);
+    $('#f-sinal').value=p&&v?numValor(Math.round(v*p)/100):'';
+  } else{
+    const s=valorNum($('#f-sinal').value);
+    $('#f-pct').value=s&&v?fmtPct(s/v*100):'';
+  }
+  atualizarSaldo();
+};
+
+/* ==== Modelo do orçamento: edite os textos aqui ==== */
+const NEGOCIO='Leandra Doces Finos';
+const PAGAMENTO='Pagamento via Pix. Chave CNPJ: 15.135.383/0001-82';
+const VALIDADE_DIAS='7';
+const PCT_SINAL='30' // usado quando o campo "Sinal" estiver vazio
+const DIAS_SALDO='15' // o saldo vence X dias antes do evento
+
+const vencSaldo=data=>{const d=pd(data);d.setDate(d.getDate()-DIAS_SALDO);return iso(d)};
+const dataExtenso=s=>pd(s).toLocaleString('pt-BR',{weekday:'long',day:'numeric',month:'long',day:'numeric'});
+
+function montarMensagem() {
+  const nome=$('#f-nome').value.trim().split(' ')[0];
+  const data=brIso($('#f-data').value),hora=$('#f-hora').value;
+  const itens=lerItens(),valor=valorNum($('#f-valor').value);
+  const sinal=Math.min(valorNum($('#f-sinal').value)||Math.round(valor*PCT_SINAL)/100,valor);
+  const saldo=Math.max(valor-sinal,0),venc=vencSaldo(data);
+  const conv=$('#f-conv').value,local=$('#f-local').value.trim(),ent=$('#f-entrega').value,det=$('#f-desc').value.trim();
+  const L=['Olá'+(nome?', '+nome:'')+'! Tudo bem? '+EMO_SMILE,'','Segue o orçamento da *'+NEGOCIO+'*:','',
+    '*Evento:* '+$('#f-tipo').value,'*Data:* '+dataExtenso(data)+(hora?' às '+hora:'')];
+  if(conv)L.push('*Convidados:* '+conv);
+  if(local||ent)L.push('*Entrega:* '+[local,ent?'a partir das '+ent:''].filter(Boolean).join(' · '));
+  if(itens.length) {
+    L.push('','*Itens:*');
+    itens.forEach(i=>L.push('• '+(i.q?i.q+' × ':'')+i.d+(i.u&&i.q?' - '+brl(i.q*i.u):'')));
+    if(det)L.push('','*Observações:* '+det);
+  } else if(det){
+      L.push('','*Itens:*',...det.split('\n').filter(Boolean).map(l=>'• '+1));
+  }
+  if(valor){
+    L.push('','*Valor total:* '+brl(valor),'','*Condições de pagamento:*','• Sinal de '+brl(sinal)+' para reservar a data');
+    if(saldo>0)L.push(venc>=iso(new Date())
+      ?'• Saldo de '+brl(saldo)+' até '+isoBr(venc)+' ('+DIAS_SALDO+' dias antes do envento)'
+      :'• Saldo de '+brl(saldo)+' a combinar');
+  }
+  L.push('',PAGAMENTO,'Orçamento válido por '+VALIDADE_DIAS+' dias.','Qualquer dúvida, é só chamar! '+EMO_CUPCAKE);
+  return L.join('\n');
+}
+
+function numeroWpp() {
+  let d=$('#f-tel').value.replace(/\D/g,'');
+  if(d.length>=10&&d.lenth<=11)d='55'+d; // acrescenta o código do Brasil
+  return d;
 }
 
 /* itens do pedido */
@@ -56,7 +126,7 @@ function recalc(){
   const total=Math.round(lerItens().reduce((t,i)=>t+i.q*i.u,0)*100)/100,v=$('#f-valor');
   v.readOnly=total>0;
   if(total>0)v.value=numValor(total);
-  atualizarSaldo();
+  sincSinal();
 }
 const hAg=o=>o.entrega||o.hora; // horário que vale para a agenda
 
@@ -88,7 +158,8 @@ function card(o){
   return `<button class="item" data-id="${o.id}"><div class="top"><div><b>${esc(o.nome)}</b>
   <div class="meta">${o.kind==='orc'?esc(o.tipo)+' · ':''}${dshort(o.data)}${o.hora?' às '+o.hora:''}${o.valor?' · '+brl(o.valor):''}</div></div>
   <span class="badge s-${st}">${st}</span></div>
-  ${p?'<div class="meta">'+p.txt+'</div>':''}
+  ${p?'<div class="meta">'+p.txt+(o.status==='Confirmado'&&p.saldo>0?' · saldo até '+dshort(p.venc):'')+'</div>':''}
+  ${o.status==='Confirmado'&&p&&p.saldo>0&&p.venc<iso(now)?'<div class="warn">Saldo a cobrar: o prazo já chegou</div>':''}
   ${c?'<div class="warn">Atenção: há outro compromisso nesta data</div>':''}</button>`;
 }
 
@@ -112,7 +183,10 @@ function viewAgenda(){
     g+=`<button class="day${k===today?' today':''}${k===sel?' sel':''}${b?' clash':''}" data-d="${k}" aria-label="${dlong(k)}">${d}<span class="dots">${dots}</span></button>`;
   }
   const L=byDay(sel);
-  return `<h1>Agenda de Doces</h1><p class="sub">Seus pedidos e compromissos num só lugar</p>${nxt}
+  const lim=plus(7);
+  const cobrar=items.filter(o=>o.kind==='orc'&&o.status==='Confirmado'&&o.data>=today&&pagto(o)&&pagto(o).saldo>0&&pagto(o).venc<=lim).sort((a,b)=>a.data.localeCompare(b.data));
+  const cob=cobrar.length?`<div class="item" style="cursor:default"><b>Saldos para cobrar</b>${cobrar.map(o=>`<div class="meta">${esc(o.nome)} · ${brl(pagto(o).saldo)} · até ${dshort(pagto(o).venc)}</div>`).join('')}</div>`:'';
+  return `<h1>Agenda de Doces</h1><p class="sub">Seus pedidos e compromissos num só lugar</p>${nxt}${cob}
   <div class="cal"><div class="cal-h"><button class="nav" data-m="-1" aria-label="Mês anterior">‹</button><strong>${mname}</strong><button class="nav" data-m="1" aria-label="Próximo mês">›</button></div>
   <div class="grid">${g}</div>
   <div class="legend"><span><i style="background:var(--pist)"></i>Confirmado</span><span><i style="background:var(--car)"></i>Em aberto</span><span><i style="background:var(--plum)"></i>Compromisso</span><span><i style="box-shadow:0 0 0 2px var(--red)"></i>Conflito</span></div></div>
@@ -180,7 +254,10 @@ function openSheet(o){
   $('#f-data').value=isoBr(o?o.data:sel);$('#f-hora').value=o?o.hora||'':'';$('#f-conv').value=o&&o.conv||'';
   $('#f-valor').value=o&&o.valor?numValor(o.valor):'';$('#f-status').value=o&&o.status||'Novo';$('#f-desc').value=o?o.desc||'':'';
   $('#b-del').classList.toggle('hide',!o);$('#itens').innerHTML='';(o&&o.itens||[]).forEach(addItem);recalc();
-  $('#f-local').value=o?o.local||'':'';$('#f-entrega').value=o?o.entrega||'':'';$('#f-sinal').value=o&&o.sinal?numValor(o.sinal):'';atualizarSaldo();check();$('#ov').classList.add('open');setTimeout(()=>$('#f-nome').focus(),50);
+  $('#f-local').value=o?o.local||'':'';$('#f-entrega').value=o?o.entrega||'':'';sinalModo=o&&o.sinalPct?'pct':'val';
+  $('#f-sinal').value=o&&o.sinal?numValor(o.sinal):'';
+  $('#f-pct').value=o&&o.sinalPct?fmtPct(o.sinalPct):'';
+  sincSinal();check();$('#ov').classList.add('open');setTimeout(()=>$('#f-nome').focus(),50);
 }
 const closeSheet=()=>$('#ov').classList.remove('open');
 
@@ -198,7 +275,7 @@ $('#b-save').onclick=()=>{
   if(kind==='orc'&&!horaOk(ent)){$('#alert').innerHTML='Horario de entrega inválido (use hh:mm).';$('#alert').classList.remove('hide');return}
   if(!nome||!data||!horaOk(hora)){$('#alert').innerHTML='Preencha o nome, uma data válida (dd/mm/aaa) e, se quiser, um horário válido (hh:mm).';$('#alert').classList.remove('hide');return}
   const o={id:editing?editing.id:Date.now(),kind,nome,data,hora:$('#f-hora').value,desc:$('#f-desc').value.trim()};
-  if(kind==='orc')Object.assign(o,{tel:$('#f-tel').value.trim(),tipo:$('#f-tipo').value,conv:$('#f-conv').value,valor:valorNum($('#f-valor').value),sinal:valorNum($('#f-sinal').value),status:$('#f-status').value,itens:lerItens(),local:$('#f-local').value.trim(),entrega:ent});
+  if(kind==='orc')Object.assign(o,{tel:$('#f-tel').value.trim(),tipo:$('#f-tipo').value,conv:$('#f-conv').value,valor:valorNum($('#f-valor').value),sinal:valorNum($('#f-sinal').value),sinalPct:sinalModo==='pct'?pctNum($('#f-pct').value):null,status:$('#f-status').value,itens:lerItens(),local:$('#f-local').value.trim(),entrega:ent});
   items=editing?items.map(x=>x.id===o.id?o:x):[...items,o];
   save();sel=data;const d=pd(data);vy=d.getFullYear();vm=d.getMonth();closeSheet();render();
 };
@@ -223,10 +300,14 @@ $('#f-imp').addEventListener('change',e=>{
 $('#f-tel').addEventListener('input',e=>{e.target.value=maskTel(e.target.value)});
 $('#f-data').addEventListener('input',e=>{e.target.value=maskData(e.target.value);check()});
 $('#f-hora').addEventListener('input',e=>{e.target.value=maskHora(e.target.value);check()});
-$('#f-valor').addEventListener('input',e=>{e.target.value=maskValor(e.target.value);atualizarSaldo()});
+$('#f-valor').addEventListener('input',e=>{e.target.value=maskValor(e.target.value);sincSinal()});
+$('#f-sinal').addEventListener('input',e=>{e.target.value=maskValor(e.target.value);sinalModo='val';sincSinal()});
+$('#f-pct').addEventListener('input',e=>{e.target.value=maskPct(e.target.value);sinalModo='pct';sincSinal()});
+$('#b-quit').onclick=()=>{const v=valorNum($('#f-valor').value); if(v){$('#f-sinal').value=numValor(v);sinalModo='val';sincSinal()}};
+/*$('#f-valor').addEventListener('input',e=>{e.target.value=maskValor(e.target.value);atualizarSaldo()});
 $('#f-sinal').addEventListener('input',e=>{e.target.value=maskValor(e.target.value);atualizarSaldo()});
 $('#b-50').onclick=()=>{const v=valorNum($('#f-valor').value); if(v){$('#f-sinal').value=numValor(v/2);atualizarSaldo()}};
-$('#b-quit').onclick=()=>{const v=valorNum($('#f-valor').value); if(v){$('#f-sinal').value=numValor(v);atualizarSaldo()}};
+$('#b-quit').onclick=()=>{const v=valorNum($('#f-valor').value); if(v){$('#f-sinal').value=numValor(v);atualizarSaldo()}};*/
 $('#b-additem').onclick=()=>{addItem();const q=document.querySelectorAll('#itens .i-q');q[q.length-1].focus()};
 $('#itens').addEventListener('input',e=>{
   if(e.target.classList.contains('i-q'))e.target.value=e.target.value.replace(/\D/g,'').slice(0,5);
@@ -235,6 +316,11 @@ $('#itens').addEventListener('input',e=>{
 });
 $('#itens').addEventListener('click',e=>{if(e.target.closest('.x')){e.target.closest('.irow').remove();recalc()}});
 $('#f-entrega').addEventListener('input',e=>{e.target.value=maskHora(e.target.value);check()});
+$('#b-wpp').onclick=()=>{
+  if(!$('#f-nome').value.trim()||!brIso($('#f-data').value)){alert('Preencha ao menos o nome e a data');return}
+  if($('#f-status').value==='Novo')$('#f-status').value='Orçado';
+  window.open('https://wa.me/'+numeroWpp()+'?text='+encodeURIComponent(montarMensagem()),'_blank');
+};
 render();
 
 /* PWA: registra o service worker (funciona offline) */

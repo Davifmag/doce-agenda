@@ -1,5 +1,5 @@
 // Mudou algum arquivo do app? Aumente o número da versão para forçar a atualização.
-const VERSION = 'v9';
+const VERSION = 'v10';
 const CACHE = 'doces-' + VERSION;
 const ARQUIVOS = ['./', './index.html', './style.css', './app.js', './manifest.json',
   './icons/icon-192.png', './icons/icon-512.png'];
