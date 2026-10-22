@@ -38,13 +38,14 @@ function atualizarSaldo() {
 
 /* itens do pedido */
 function addItem(it) {
-  it=it||{};
-  const r=document.createElement('div');r.className='irow';
-  r.innerHTML='<input class="i-q" inputmode="numeric" placeholder="Qtd" aria-label="Quantidade"><input class="i-d" placeholder="Doce" aria-label="Descrição" autocomplete="off"><input class="i-u" inputmode="decimal" placeholder="Unit." aria-label="Valor unitário"><button type="button" class="x" aria-label="Remover item">×</button>';
-  r.queySelector('.i-q').value=it.q||'';
-  r.queySelector('.i-d').value=it.d||'';
-  r.queySelector('.i-u').value=it.u?numValor(it.u):'';
-  $('#itens').appendChild(r);
+  const dados=(it&&typeof it==='object'&&!(it instanceof Event))?it:{};
+  const linha=document.createElement('div');
+  linha.className='irow';
+  linha.innerHTML='<input class="i-q" inputmode="numeric" placeholder="Qtd" aria-label="Quantidade"><input class="i-d" placeholder="Doce" aria-label="Descrição" autocomplete="off"><input class="i-u" inputmode="decimal" placeholder="Unit." aria-label="Valor unitário"><button type="button" class="x" aria-label="Remover item">×</button>';
+  linha.querySelector('.i-q').value=dados.q||'';
+  linha.querySelector('.i-d').value=dados.d||'';
+  linha.querySelector('.i-u').value=dados.u?numValor(dados.u):'';
+  $('#itens').appendChild(linha);
 }
 const lerItens=()=>[...document.querySelectorAll('#itens .irow')].map(r=>({
   q:parseInt(r.querySelector('.i-q').value)||0,
@@ -163,17 +164,23 @@ function importar(file){
 function setKind(k){kind=k;document.querySelectorAll('#seg button').forEach(b=>b.classList.toggle('on',b.dataset.k===k));
   document.querySelectorAll('.orc').forEach(e=>e.classList.toggle('hide',k==='comp'));
   $('#l-nome').textContent=k==='orc'?'Cliente':'Compromisso';check()}
-function draft(){return {id:editing?editing.id:-1,kind,data:brIso($('#f-data').value),hora:$('#f-hora').value,status:kind==='orc'?$('#f-status').value:'Compromisso'}}
+
+function draft(){return {id:editing?editing.id:-1,kind,data:brIso($('#f-data').value),hora:$('#f-hora').value,entrega:kind==='orc'?$('#f-entrega').value:'',status:kind==='orc'?$('#f-status').value:'Compromisso'}
+}
+
 function check(){const d=draft(),a=$('#alert');
   const c=d.data?clashes(d):[];
-  if(c.length){a.innerHTML='<b>Data já ocupada:</b> '+c.map(x=>esc(x.nome)+(x.hora?' ('+x.hora+')':'')).join(', ')+'. Você ainda pode salvar.';a.classList.remove('hide')}else a.classList.add('hide')}
+  if(c.length){a.innerHTML='<b>Data já ocupada:</b> '+c.map(x=>esc(x.nome)+(x.hora?' ('+x.hora+')':'')).join(', ')+'. Você ainda pode salvar.';a.classList.remove('hide')}else a.classList.add('hide')
+}
+
 function openSheet(o){
   editing=o||null;$('#sh-t').textContent=o?'Editar':'Novo registro';
   setKind(o?o.kind:'orc');
   $('#f-nome').value=o?o.nome:'';$('#f-tel').value=maskTel(o?o.tel||'':'');$('#f-tipo').value=o&&o.tipo?o.tipo:'Casamento';
   $('#f-data').value=isoBr(o?o.data:sel);$('#f-hora').value=o?o.hora||'':'';$('#f-conv').value=o&&o.conv||'';
   $('#f-valor').value=o&&o.valor?numValor(o.valor):'';$('#f-status').value=o&&o.status||'Novo';$('#f-desc').value=o?o.desc||'':'';
-  $('#b-del').classList.toggle('hide',!o);$('#f-sinal').value=o&&o.sinal?numValor(o.sinal):'';atualizarSaldo();check();$('#ov').classList.add('open');setTimeout(()=>$('#f-nome').focus(),50);
+  $('#b-del').classList.toggle('hide',!o);$('#itens').innerHTML='';(o&&o.itens||[]).forEach(addItem);recalc();
+  $('#f-local').value=o?o.local||'':'';$('#f-entrega').value=o?o.entrega||'':'';$('#f-sinal').value=o&&o.sinal?numValor(o.sinal):'';atualizarSaldo();check();$('#ov').classList.add('open');setTimeout(()=>$('#f-nome').focus(),50);
 }
 const closeSheet=()=>$('#ov').classList.remove('open');
 
@@ -187,9 +194,11 @@ $('#t-agenda').onclick=()=>{tab='agenda';render()};
 $('#t-pedidos').onclick=()=>{tab='pedidos';render()};
 $('#b-save').onclick=()=>{
   const nome=$('#f-nome').value.trim(),data=brIso($('#f-data').value),hora=$('#f-hora').value;
+  const ent=$('#f-entrega').value;
+  if(kind==='orc'&&!horaOk(ent)){$('#alert').innerHTML='Horario de entrega inválido (use hh:mm).';$('#alert').classList.remove('hide');return}
   if(!nome||!data||!horaOk(hora)){$('#alert').innerHTML='Preencha o nome, uma data válida (dd/mm/aaa) e, se quiser, um horário válido (hh:mm).';$('#alert').classList.remove('hide');return}
   const o={id:editing?editing.id:Date.now(),kind,nome,data,hora:$('#f-hora').value,desc:$('#f-desc').value.trim()};
-  if(kind==='orc')Object.assign(o,{tel:$('#f-tel').value.trim(),tipo:$('#f-tipo').value,conv:$('#f-conv').value,valor:valorNum($('#f-valor').value),sinal:valorNum($('#f-sinal').value),status:$('#f-status').value});
+  if(kind==='orc')Object.assign(o,{tel:$('#f-tel').value.trim(),tipo:$('#f-tipo').value,conv:$('#f-conv').value,valor:valorNum($('#f-valor').value),sinal:valorNum($('#f-sinal').value),status:$('#f-status').value,itens:lerItens(),local:$('#f-local').value.trim(),entrega:ent});
   items=editing?items.map(x=>x.id===o.id?o:x):[...items,o];
   save();sel=data;const d=pd(data);vy=d.getFullYear();vm=d.getMonth();closeSheet();render();
 };
@@ -218,6 +227,14 @@ $('#f-valor').addEventListener('input',e=>{e.target.value=maskValor(e.target.val
 $('#f-sinal').addEventListener('input',e=>{e.target.value=maskValor(e.target.value);atualizarSaldo()});
 $('#b-50').onclick=()=>{const v=valorNum($('#f-valor').value); if(v){$('#f-sinal').value=numValor(v/2);atualizarSaldo()}};
 $('#b-quit').onclick=()=>{const v=valorNum($('#f-valor').value); if(v){$('#f-sinal').value=numValor(v);atualizarSaldo()}};
+$('#b-additem').onclick=()=>{addItem();const q=document.querySelectorAll('#itens .i-q');q[q.length-1].focus()};
+$('#itens').addEventListener('input',e=>{
+  if(e.target.classList.contains('i-q'))e.target.value=e.target.value.replace(/\D/g,'').slice(0,5);
+  if(e.target.classList.contains('i-u'))e.target.value=maskValor(e.target.value);
+  recalc();
+});
+$('#itens').addEventListener('click',e=>{if(e.target.closest('.x')){e.target.closest('.irow').remove();recalc()}});
+$('#f-entrega').addEventListener('input',e=>{e.target.value=maskHora(e.target.value);check()});
 render();
 
 /* PWA: registra o service worker (funciona offline) */
