@@ -244,6 +244,51 @@ function viewPedidos(){
   <div class="acts"><button class="btn" id="b-exp">Exportar</button><button class="btn" id="b-imp">Importar</button><button class="btn" id="b-sair">Sair da conta</button></div>`;
 }
 
+/* ==== Relatório ==== */
+let ry=now.getFullYear(),rm=now.getMonth();
+const R=v=>brl(v)||'R$ 0,00'
+const soma=(L,f)=>L.reduce((t,o)=>t+f(o),0);
+
+function viewRelatorio(){
+  const mk=ry+'-'+String(rm+1).padStart(2,'0');
+  const mname=new Date(ry,rm,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+  const orc=items.filter(o=>o.kind==='orc');
+  const doMes=orc.filter(o=>o.data.slice(0,7)===mk);
+  const conf=doMes.filter(o=>o.status==='Confirmado');
+  const fat=soma(conf,o=>+o.valor||0);
+  const rec=soma(conf,o=>Math.min(+o.sinal||0,+o.valor||0));
+  const aberto=doMes.filter(o=>o.status==='Novo'||o.status==='Orçado');
+  const porTipo={};
+  conf.forEach(o=>{const t=o.tipo||'Outro';porTipo[t]=porTipo[t]||{n:0,v:0};porTipo[t].n++;porTipo[t].v+=+o.valor||0});
+  const tipos=Object.entries(porTipo).sort((a,b)=>b[1].v-a[1].v);
+  const receber=orc.filter(o=>o.status==='Confirmado'&&pagto(o)&&pagto(o).saldo>0).sort((a,b)=>a.data.localeCompare(b.data));
+  const hoje=iso(now);
+
+  const linhaReceber=o=>{
+    const pg=pagto(o),atras=pg.venc<hoje;
+    return `<div class="rline"><div><b>${esc(o.nome)}</b>
+      <div class="meta">Evento ${dshort(o.data)} · saldo até ${dshort(pg.venc)}${atras?' · <span style="color:var(--red);font-weight:700">prazo chegou</span>':''}</div></div>
+      <div style="text-align:right"><b>${R(pg.saldo)}</b><br><button class="btn small" style="margin-top:4px" data-rec="${o.id}">Recebido</button></div></div>`;
+  };
+
+  return `<h1>Relatório</h1>
+<p class="sub">Por data do evento, só pedidos confirmados</p>
+<div class="cal-h" style="margin-bottom: 10px;">
+  <button class="nav" data-rm="-1" aria-label="Mês anterior">‹</button>
+  <strong style="font: 600 18px Fraunces, Georgia, serif;text-transform: capitalize;">${mname}</strong>
+  <button class="nav" data-rm="1" aria-label="Próximo mês">›</button>
+</div>
+<div class="kpis">
+  <div class="kpi"><span>Faturamento</span><b>${R(fat)}</b></div>
+  <div class="kpi"><span>Eventos confirmados</span><b>${conf.length}</b></div>
+  <div class="kpi"><span>Já recebido</span><b>${R(rec)}</b></div>
+  <div class="kpi"><span>Falta receber</span><b>${R(fat-rec)}</b></div>
+  <div class="kpi"><span>Ticket médio</span><b>${R(conf.length?fat/conf.length:0)}</b></div>
+  <div class="kpi"><span>Orçamentos em aberto ${aberto.length}</span><b>${R(soma(aberto,o=>+o.valor||0))}</b></div>
+</div>
+${tipos.length?`<h2>Por tipo de evento</h2><div class="item" style="cursor: default;">${tipos.map(([t,d])=>`<div class="rline"><span>${esc(t)} <span class="meta">· ${d.n}</span></span><b>${R(d.v)}</b></div>`).join('')}</div>`:''}`
+}
+
 function exportar(){
   const dados={app:'agenda-de-doces',versao:1,exportadoEm:new Date().toISOString(),itens:items};
   const blob=new Blob([JSON.stringify(dados,null,2)],{type:'application/json'});

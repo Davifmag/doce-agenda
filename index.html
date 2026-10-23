@@ -15,6 +15,9 @@
 </head>
 <body>
 <input type="file" id="f-imp" accept=".json,application/json" hidden>
+
+<!-- ===========================TELA DE LOGIN======================================== -->
+
 <div class="ov open" id="login" style="align-items: center;background: var(--bg);">
   <div class="sheet" style="border-radius: 22px;margin: 16px;max-width: 420px;">
     <h2 style="margin-top: 0;">Agenda de Doces</h2>
@@ -27,14 +30,23 @@
     <div class="acts"><button class="btn pri" id="l-entrar">Entrar</button></div>
   </div>
 </div>
+
+<!-- ================================================================================= -->
+<!-- ===========================RODAPÉ AGENDA | + | PEDIDOS=========================== -->
+
 <div class="app" id="app"></div>
 <div class="bar">
   <div>
     <button class="tab" id="t-agenda">Agenda</button>
-    <button class="fab" id="fab" aria-label="Novo registro">+</button>
     <button class="tab" id="t-pedidos">Pedidos</button>
+    <button class="fab" id="fab" aria-label="Novo registro">+</button>
+    <button class="tab" id="t-relatorio">Relatório</button>
   </div>
 </div>
+
+<!-- ================================================================================= -->
+<!-- ========================FORM DE CADASTRO DE PEDIDO=============================== -->
+
 <div class="ov" id="ov">
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sh-t">
     <h2 id="sh-t" style="margin-top:0">Novo registro</h2>
@@ -123,6 +135,8 @@
     </div>
   </div>
 </div>
+
+<!-- ================================================================================= -->
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
 <script src="app.js"></script>
