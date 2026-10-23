@@ -131,12 +131,49 @@ function recalc(){
 const hAg=o=>o.entrega||o.hora; // horário que vale para a agenda
 
 let items=(()=>{try{const r=localStorage.getItem(K);if(r)return JSON.parse(r)}catch(e){}
-return [/*
-{id:1,kind:'orc',nome:'Camila e Rafael',tel:'',tipo:'Casamento',data:plus(6),hora:'18:00',conv:150,valor:3200,status:'Confirmado',desc:'300 doces finos, bolo de 3 andares'},
-{id:2,kind:'orc',nome:'Helena (15 anos)',tel:'',tipo:'15 anos',data:plus(6),hora:'20:00',conv:80,valor:1800,status:'Novo',desc:'Mesa de doces rosa e dourado'},
-{id:3,kind:'comp',nome:'Comprar insumos',tel:'',tipo:'',data:plus(3),hora:'09:00',desc:'Chocolate, leite condensado, embalagens'},
-{id:4,kind:'orc',nome:'Marcos',tel:'',tipo:'Aniversário',data:plus(20),hora:'15:00',conv:40,valor:650,status:'Orçado',desc:'Cento de brigadeiros e cupcakes'}*/]})();
+return []})();
 const save=()=>{try{localStorage.setItem(K,JSON.stringify(items))}catch(e){}};
+
+/* ===== Supabase ===== */
+const SUPABASE_URL='https://otakntkggjeunpzxwoly.supabase.co';
+const SUPABASE_KEY='sb_publishable_fDlT-_ymboO_TsmEzbtoiw_nF7gEC74';
+let sb=null;
+try{sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY)}catch(e){console.warn('Supabase indisponível',e)}
+
+const toRow=o=>({kind:o.kind,nome:o.nome,tel:o.tel||null,tipo:o.tipo||null,data:o.data,hora:o.hora||'',entrega:o.entrega||'',conv:parseInt(o.conv)||null,valor:+o.valor||0,sinal:+o.sinal||0,sinal_pct:o.sinalPct||null,status:o.kind==='comp'?null:(o.status||null),local_entrega:o.local||'',descr:o.desc||'',itens:o.itens||[]});
+const fromRow=r=>({id:r.id,kind:r.kind,nome:r.nome,tel:r.tel||'',tipo:r.tipo||'',data:r.data,hora:r.hora||'',entrega:r.entrega||'',conv:r.conv||'',valor:+r.valor||0,sinal:+r.sinal||0,sinalPct:r.sinal_pct==null?null:+r.sinal_pct,status:r.status||'',local:r.local_entrega||'',desc:r.descr||'',itens:r.itens||[]});
+
+async function salvarNuvem(o) {
+  const row=toRow(o);
+  const q=o.id?sb.from('registros').update(row).eq('id',o.id):sb.from('registros').insert(row);
+  const {data,error}=await q.select().single();
+  if(error)throw error;
+  return fromRow(data);
+}
+
+async function carregar() {
+  const {data,error}=await sb.from('registros').select('*').order('data');
+  if(error)throw error;
+  items=data.map(fromRow);
+  save();
+  render();
+}
+
+function mostrarLogin(msg) {
+  $('#login').classList.add('open');
+  const a=$('#l-erro');
+  if(msg){
+    a.textContent=msg;a.classList.remove('hide')
+  } else a.classList.add('hide');
+}
+
+async function iniciar() {
+  if(!sb) {mostrarLogin('Sem conexão com o serviço. Abra o app com internet.');return}
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session){mostrarLogin();return}
+  $('#login').classList.remove('open');
+  try{await carregar()}catch(e){console.warn('Sem conexão; mostrando os últimos dados salvos.',e)}
+}
 
 const now=new Date();
 let tab='agenda',filter='Todos',sel=iso(now),vy=now.getFullYear(),vm=now.getMonth(),editing=null,kind='orc';
@@ -204,7 +241,7 @@ function viewPedidos(){
   ${L.length?L.map(card).join(''):'<div class="empty">Nenhum pedido nesta situação.</div>'}
   <h2>Backup</h2>
   <p class="sub">Salve uma cópia dos seus dados ou restaure de um arquivo.</p>
-  <div class="acts"><button class="btn" id="b-exp">Exportar</button><button class="btn" id="b-imp">Importar</button></div>`;
+  <div class="acts"><button class="btn" id="b-exp">Exportar</button><button class="btn" id="b-imp">Importar</button><button class="btn" id="b-sair">Sair da conta</button></div>`;
 }
 
 function exportar(){
@@ -219,17 +256,20 @@ function exportar(){
 
 function importar(file){
   const r=new FileReader();
-  r.onload=()=>{
+  r.onload=async()=>{
     try{
       const d=JSON.parse(r.result);
       if(d.app!=='agenda-de-doces'||!Array.isArray(d.itens))throw new Error('formato');
-      const ok=d.itens.filter(o=>o&&o.id&&o.nome&&/^\d{4}-\d{2}-\d{2}$/.test(o.data));
-      const mapa=new Map(items.map(o=>[o.id,o]));
-      ok.forEach(o=>mapa.set(o.id,o));
-      items=[...mapa.values()];
-      save();render();
-      alert(ok.length+' registros importados.');
-    }catch(e){alert('Arquivo inválido. Escolha um backup gerado por este app.')}
+      const chave=o=>[o.kind,o.nome,o.data,o.hora||'',+o.valor||0].join('|');
+      const existentes=new Set(items.map(chave));
+      const novos=d.itens.filter(o=>o&&o.nome&&/^\d{4}-\d{2}-\d{2}$/.test(o.data)&&!existentes.has(chave(o)));
+      if(novos.length){
+        const {error}=await sb.from('registros').insert(novos.map(toRow));
+        if(error)throw error;
+        await carregar();
+      }
+      alert(novos.length+' registros importados'+(d.itens.length>novos.length?' ('+(d.itens.length-novos.length)+' já existiam ou eram inválidos).':'.'));
+    }catch(e){alert('Não foi possível importar: '+(e.message==='formato'?'arquivo inválido.':e.message))}
   };
   r.readAsText(file);
 }
@@ -269,17 +309,37 @@ $('#seg').onclick=e=>{if(e.target.dataset.k)setKind(e.target.dataset.k)};
 ['f-data','f-status'].forEach(i=>$('#'+i).addEventListener('change',check));
 $('#t-agenda').onclick=()=>{tab='agenda';render()};
 $('#t-pedidos').onclick=()=>{tab='pedidos';render()};
-$('#b-save').onclick=()=>{
-  const nome=$('#f-nome').value.trim(),data=brIso($('#f-data').value),hora=$('#f-hora').value;
-  const ent=$('#f-entrega').value;
-  if(kind==='orc'&&!horaOk(ent)){$('#alert').innerHTML='Horario de entrega inválido (use hh:mm).';$('#alert').classList.remove('hide');return}
-  if(!nome||!data||!horaOk(hora)){$('#alert').innerHTML='Preencha o nome, uma data válida (dd/mm/aaa) e, se quiser, um horário válido (hh:mm).';$('#alert').classList.remove('hide');return}
-  const o={id:editing?editing.id:Date.now(),kind,nome,data,hora:$('#f-hora').value,desc:$('#f-desc').value.trim()};
-  if(kind==='orc')Object.assign(o,{tel:$('#f-tel').value.trim(),tipo:$('#f-tipo').value,conv:$('#f-conv').value,valor:valorNum($('#f-valor').value),sinal:valorNum($('#f-sinal').value),sinalPct:sinalModo==='pct'?pctNum($('#f-pct').value):null,status:$('#f-status').value,itens:lerItens(),local:$('#f-local').value.trim(),entrega:ent});
-  items=editing?items.map(x=>x.id===o.id?o:x):[...items,o];
-  save();sel=data;const d=pd(data);vy=d.getFullYear();vm=d.getMonth();closeSheet();render();
+$('#b-save').onclick=async()=>{
+  const al=$('#alert'),btn=$('#b-save');
+  al.classList.add('hide');
+  try{
+    const nome=$('#f-nome').value.trim(),data=brIso($('#f-data').value),hora=$('#f-hora').value,ent=$('#f-entrega').value;
+    const faltam=[];
+    if(!nome)faltam.push('o nome');
+    if(!data)faltam.push('a data (dd/mm/aaaa)');
+    if(!horaOk(hora))faltam.push('o horário do evento (hh:mm)');
+    if(kind==='orc'&&!horaOk(ent))faltam.push('o horário de entrega (hh:mm)');
+    if(faltam.length){al.textContent='Confira '+faltam.join(', ')+'.';al.classList.remove('hide');return}
+    const o={id:editing?editing.id:null,kind,nome,data,hora,desc:$('#f-desc').value.trim()};
+    if(kind==='orc')Object.assign(o,{tel:$('#f-tel').value.trim(),tipo:$('#f-tipo').value,conv:$('#f-conv').value,
+      valor:valorNum($('#f-valor').value),sinal:valorNum($('#f-sinal').value),
+      sinalPct:sinalModo==='pct'?pctNum($('#f-pct').value):null,status:$('#f-status').value,
+      itens:lerItens(),local:$('#f-local').value.trim(),entrega:ent});
+    btn.disabled=true;
+    const salvo=await salvarNuvem(o);
+    items=editing?items.map(x=>x.id===salvo.id?salvo:x):[...items,salvo];
+    save();sel=data;const d=pd(data);vy=d.getFullYear();vm=d.getMonth();closeSheet();render();
+  }catch(e){
+    console.error(e);
+    al.textContent='Erro ao salvar: '+(e.message||e);al.classList.remove('hide');
+  }finally{btn.disabled=false}
 };
-$('#b-del').onclick=()=>{if(confirm('Excluir este registro?')){items=items.filter(x=>x.id!==editing.id);save();closeSheet();render()}};
+$('#b-del').onclick=async()=>{
+  if(!confirm('Excluir este registro?'))return;
+  const {error}=await sb.from('registros').delete().eq('id',editing.id);
+  if(error){alert('Não foi possível excluir: '+error.message);return}
+  items=items.filter(x=>x.id!==editing.id);save();closeSheet();render();
+};
 $('#app').onclick=e=>{
   const t=e.target.closest('[data-id],[data-d],[data-m],[data-f]');if(!t)return;
   if(t.dataset.id)openSheet(items.find(x=>x.id==t.dataset.id));
@@ -321,7 +381,21 @@ $('#b-wpp').onclick=()=>{
   if($('#f-status').value==='Novo')$('#f-status').value='Orçado';
   window.open('https://wa.me/'+numeroWpp()+'?text='+encodeURIComponent(montarMensagem()),'_blank');
 };
-render();
+$('#l-entrar').onclick=async()=>{
+  if(!sb)return;
+  const {error}=await sb.auth.signInWithPassword({email:$('#l-email').value.trim(),password:$('#l-senha').value});
+  if(error){mostrarLogin('e-Mail ou senha incorretos.');return}
+  $('#l-senha').value='';$('#login').classList.remove('open');
+  try{await carregar()}catch(e){alert('Não foi possível carregar os dados: '+(e.message||e))}
+};
+$('#l-senha').addEventListener('keydown',e=>{if(e.key==='Enter')$('#l-entrar').click()});
+document.addEventListener('click',async e=>{
+  if(!e.target.closest('#b-sair'))return;
+  if(sb)await sb.auth.signOut();
+  items=[];try{localStorage.removeItem(K)}catch(_){}
+  render();mostrarLogin();
+});
+render();iniciar();
 
 /* PWA: registra o service worker (funciona offline) */
 if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(e=>console.warn('SW falhou',e))})}

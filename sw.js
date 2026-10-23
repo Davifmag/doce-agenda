@@ -1,5 +1,5 @@
 // Mudou algum arquivo do app? Aumente o número da versão para forçar a atualização.
-const VERSION = 'v10';
+const VERSION = 'v12';
 const CACHE = 'doces-' + VERSION;
 const ARQUIVOS = ['./', './index.html', './style.css', './app.js', './manifest.json',
   './icons/icon-192.png', './icons/icon-512.png'];
@@ -20,7 +20,7 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
   const mesmaOrigem = url.origin === location.origin;
-  const fonte = url.hostname.endsWith('googleapis.com') || url.hostname.endsWith('gstatic.com');
+  const fonte = url.hostname.endsWith('googleapis.com') || url.hostname.endsWith('gstatic.com') || url.hostname === 'cdn.jsdelivr.net';
   if (!mesmaOrigem && !fonte) return;
 
   e.respondWith(

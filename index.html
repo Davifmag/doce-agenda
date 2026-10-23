@@ -15,6 +15,18 @@
 </head>
 <body>
 <input type="file" id="f-imp" accept=".json,application/json" hidden>
+<div class="ov open" id="login" style="align-items: center;background: var(--bg);">
+  <div class="sheet" style="border-radius: 22px;margin: 16px;max-width: 420px;">
+    <h2 style="margin-top: 0;">Agenda de Doces</h2>
+    <p class="sub">Entre para acessar seus pedidos</p>
+    <label for="l-email">e-Mail</label>
+    <input type="email" id="l-email" autocomplete="username">
+    <label for="l-senha">Senha</label>
+    <input type="password" id="l-senha" autocomplete="current-password">
+    <div class="alert hide" id="l-erro"></div>
+    <div class="acts"><button class="btn pri" id="l-entrar">Entrar</button></div>
+  </div>
+</div>
 <div class="app" id="app"></div>
 <div class="bar">
   <div>
@@ -112,6 +124,7 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
