@@ -64,7 +64,7 @@ function sincSinal() {
 
 /* ==== Modelo do orçamento: edite os textos aqui ==== */
 const NEGOCIO='Leandra Doces Finos';
-const PAGAMENTO='Pagamento via Pix. Chave CNPJ: 15.135.383/0001-82';
+const PAGAMENTO='Pagamento via Pix. Chave telefone: (17)99647-8735';
 const VALIDADE_DIAS='7';
 const PCT_SINAL='30' // usado quando o campo "Sinal" estiver vazio
 const DIAS_SALDO='15' // o saldo vence X dias antes do evento
@@ -534,6 +534,24 @@ document.addEventListener('click',async e=>{
 });
 $('#f-cpf').addEventListener('input',e=>{e.target.value=maskCpf(e.target.value)});
 $('#b-pdf').onclick=gerarContrato;
+/* tema claro / escuro */
+const KT='doces-tema';
+const temaAtual=()=>document.documentElement.getAttribute('data-theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');
+function iconeTema() {
+  const t=temaAtual(),b=$('#b-tema');
+  b.textContent=t==='dark'?'☀':'☾';
+  b.setAttribute('aria-label',t==='dark'?'Mudar para o tema claro':'Mudar para o tema escuro');
+}
+$('#b-tema').onclick=()=>{
+  const t=temaAtual()==='dark'?'light':'dark';
+  document.documentElement.setAttribute('data-theme',t);
+  try {
+    localStorage.setItem(KT,t)
+  } catch(e){}
+  iconeTema();
+};
+iconeTema();
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',iconeTema);
 render();iniciar();
 
 /* PWA: registra o service worker (funciona offline) */

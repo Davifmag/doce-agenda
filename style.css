@@ -365,6 +365,7 @@ h2::first-letter {
     left:0;
     right:0;
     bottom:0;
+    z-index: 3;
     background:var(--card);
     border-top:1px solid var(--line);
     padding:8px 16px calc(8px + env(safe-area-inset-bottom,0px))
@@ -593,4 +594,19 @@ input [readonly]{
     flex:none;
     padding: 7px 12px;
     font-size: 14px;
+}
+
+.tema {
+    position: fixed;
+    top: calc(10px + env(safe-area-inset-top,0px));
+    right: 12px;
+    z-index: 2;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: var(--card);
+    color: var(--ink);
+    font-size: 20px;
+    line-height: 1
 }

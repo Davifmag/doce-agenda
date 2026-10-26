@@ -11,6 +11,13 @@
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script>
+  try {
+    var t=localStorage.getItem('doces-tema');
+    if(t)document.documentElement.setAttribute('data-theme',t)
+  }
+  catch(e) {}
+</script>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -35,6 +42,7 @@
 <!-- ===========================RODAPÉ AGENDA | + | PEDIDOS=========================== -->
 
 <div class="app" id="app"></div>
+<button type="button" id="b-tema" class="tema"></button>
 <div class="bar">
   <div>
     <button class="tab" id="t-agenda">Agenda</button>
