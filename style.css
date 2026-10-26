@@ -74,6 +74,21 @@ body {
     font:400 16px/1.45 "DM Sans",system-ui,sans-serif
 }
 
+body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    background:url(logo.png) center 40%/min(70%,380px) no-repeat;
+    opacity:.07;
+    pointer-events:none;
+    z-index:0
+}
+
+.app{
+    position:relative;
+    z-index:1
+}
+
 .app {
     max-width:520px;
     margin:0 auto;

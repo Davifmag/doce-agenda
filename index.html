@@ -60,6 +60,8 @@
       <label for="f-tel">WhatsApp</label>
       <input id="f-tel" type="tel" placeholder="(17) 90000-0000">
     </div>
+    <div class="orc"><label for="f-cpf">CPF do contratante</label><input id="f-cpf" inputmode="numeric" placeholder="000.000.000-00" maxlength="14" autocomplete="off"></div>
+    <div class="orc"><label for="f-endcli">Endereço do contratante</label><input id="f-endcli" autocomplete="off"></div>
     <div class="orc">
       <label for="f-tipo">Tipo de evento</label>
       <select id="f-tipo">
@@ -127,6 +129,7 @@
     <label for="f-desc">Detalhes</label>
     <textarea id="f-desc" rows="3" placeholder="Ex.: 200 brigadeiros gourmet, 100 cupcakes"></textarea>
     <button type="button" class="btn orc" id="b-wpp" style="width: 100%;margin-top: 14px;">Enviar orçamento pelo WhatsApp</button>
+    <button type="button" class="btn orc" id="b-pdf" style="width:100%;margin-top:10px">Gerar contrato (PDF)</button> 
     <div class="alert hide" id="alert"></div>
     <div class="acts">
       <button class="btn del hide" id="b-del">Excluir</button>

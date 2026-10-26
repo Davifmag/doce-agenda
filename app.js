@@ -100,6 +100,83 @@ function montarMensagem() {
   return L.join('\n');
 }
 
+/* ===== Contrato: editar aqui ===== */
+const CONTRATADA={nome:'Leandra Marcia Ferreira',doc:'CNPJ: 15.135.383/0001-82',end:'Rua Atilio Luchesi, 2880 - São Bernardo'};
+const CIDADE='Mirassol/SP';
+const MULTA_PCT=20; // multa em caso de desistência do contratante
+
+const maskCpf=v=>{v=v.replace(/\D/g,'').slice(0,11);
+  return v.replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})\.(\d{3})(\d)/,'$1.$2.$3').replace(/(\d{3})\.(\d{3})\.(\d{3})(\d)/,'$1.$2.$3-$4')};
+
+const LOGO='logo.png'; // arquivo na pasta do projeto
+
+function gerarContrato(){
+  const nome=$('#f-nome').value.trim(),data=brIso($('#f-data').value);
+  if(!nome||!data){alert('Preencha ao menos o nome e a data.');return}
+  const itens=lerItens(),valor=valorNum($('#f-valor').value);
+  if(!valor){alert('Informe os itens ou o valor total antes de gerar o contrato.');return}
+  const sinal=Math.min(valorNum($('#f-sinal').value)||Math.round(valor*PCT_SINAL)/100,valor);
+  const saldo=Math.max(valor-sinal,0),venc=vencSaldo(data),pct=Math.round(sinal/valor*10000)/100;
+  const hora=$('#f-hora').value,ent=$('#f-entrega').value,local=$('#f-local').value.trim();
+  const cpf=$('#f-cpf').value.trim()||'não informado',end=$('#f-endcli').value.trim()||'não informado';
+  const tipo=$('#f-tipo').value,det=$('#f-desc').value.trim();
+  const linhas=itens.length
+    ?itens.map(i=>`<tr><td>${i.q||''}</td><td>${esc(i.d)}</td><td class="r">${i.u?brl(i.u):''}</td><td class="r">${i.u&&i.q?brl(i.q*i.u):''}</td></tr>`).join('')
+    :det.split('\n').filter(Boolean).map(l=>`<tr><td></td><td colspan="3">${esc(l)}</td></tr>`).join('');
+  const obs=itens.length&&det?`<p><b>Observações:</b> ${esc(det)}</p>`:'';
+  const prazoSaldo=venc>=iso(new Date())?'até '+isoBr(venc)+' ('+DIAS_SALDO+' dias antes do evento)':'a combinar entre as partes';
+
+  /* cláusulas: modelo de exemplo, substitua pelas do seu contrato */
+  const clausulas=[
+    ['DO OBJETO',`A CONTRATADA fornecerá ao CONTRATANTE os doces e produtos descritos na tabela acima, para o evento (${esc(tipo)}) a ser realizado em ${dataExtenso(data)}${hora?', às '+hora:''}.`],
+    ['DA ENTREGA',`A entrega será feita em ${esc(local)||'local a combinar'}${ent?', a partir das '+ent:''}. Os utensílios de propriedade da CONTRATADA, eventualmente cedidos para a ambientação da mesa, deverão ser devolvidos no prazo combinado ou ressarcidos.`],
+    ['DO PAGAMENTO',`O valor total é de ${brl(valor)}, pago da seguinte forma: sinal de ${brl(sinal)} (${String(pct).replace('.',',')}%) na assinatura${saldo>0?' e saldo de '+brl(saldo)+' '+prazoSaldo:''}. ${esc(PAGAMENTO)}`],
+    ['DA DESISTÊNCIA',`Em caso de desistência pelo CONTRATANTE, o sinal pago não será restituído, sendo devida ainda multa de ${MULTA_PCT}% sobre o valor total do contrato, descontado o sinal já pago.`],
+    ['DO DESCUMPRIMENTO PELA CONTRATADA','Se a CONTRATADA não puder cumprir o serviço contratado, os valores já pagos serão devolvidos integralmente ao CONTRATANTE.'],
+    ['DO FORO',`As partes elegem o foro da comarca de ${esc(CIDADE)} para dirimir quaisquer questões deste contrato.`]
+  ];
+
+  const html=`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Contrato - ${esc(nome)}</title>
+<style>
+@page{size:A4;margin:18mm}
+body{font:11pt/1.5 Georgia,'Times New Roman',serif;color:#000;margin:0}
+h1{font-size:15pt;text-align:center;margin:0 0 14px}
+p{margin:6px 0;text-align:justify}
+table{width:100%;border-collapse:collapse;margin:10px 0}
+th,td{border:1px solid #444;padding:5px 8px;text-align:left;font-size:10.5pt}
+.r{text-align:right}
+.cl{break-inside:avoid;margin-top:10px}
+.ass{display:flex;gap:30px;margin-top:50px;break-inside:avoid}
+.ass div{flex:1;border-top:1px solid #000;padding-top:4px;text-align:center;font-size:10pt}
+.marca{position:fixed;top:50%;left:50%;width:65%;transform:translate(-50%,-50%);opacity:.08;z-index:-1;pointer-events:none}
+</style></head><body>
+<img class="marca" src="${new URL(LOGO,location.href).href}" alt="">
+<h1>CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE DOCES</h1>
+<p><b>CONTRATADA:</b> ${esc(CONTRATADA.nome)}, ${esc(CONTRATADA.doc)}, com endereço em ${esc(CONTRATADA.end)}.</p>
+<p><b>CONTRATANTE:</b> ${esc(nome)}, CPF ${esc(cpf)}, com endereço em ${esc(end)}.</p>
+<p>As partes acima identificadas firmam o presente contrato, mediante as cláusulas a seguir.</p>
+<table><thead><tr><th style="width:60px">Qtd.</th><th>Descrição</th><th class="r" style="width:90px">Valor unit.</th><th class="r" style="width:100px">Total</th></tr></thead>
+<tbody>${linhas}<tr><td colspan="3" class="r"><b>Valor total</b></td><td class="r"><b>${brl(valor)}</b></td></tr></tbody></table>
+${obs}
+${clausulas.map((c,i)=>`<div class="cl"><p><b>CLÁUSULA ${i+1}ª – ${c[0]}</b></p><p>${c[1]}</p></div>`).join('')}
+<p style="margin-top:18px">${esc(CIDADE)}, ${dataExtenso(iso(new Date()))}.</p>
+<div class="ass"><div>${esc(nome)}<br>CONTRATANTE</div><div>${esc(CONTRATADA.nome)}<br>CONTRATADA</div></div>
+<div class="ass"><div>Testemunha 1</div><div>Testemunha 2</div></div>
+</body></html>`;
+
+  const w=window.open('','_blank');
+if(!w){alert('O navegador bloqueou a janela. Permita pop-ups para este site e tente de novo.');return}
+const escrever=()=>{
+  w.document.open();w.document.write(html);w.document.close();
+  const img=w.document.querySelector('.marca');
+  const imprimir=()=>{w.focus();w.print()};
+  if(img&&!img.complete){img.onload=imprimir;img.onerror=imprimir}else setTimeout(imprimir,300);
+};
+const pre=new Image();
+pre.onload=pre.onerror=escrever;
+pre.src=new URL(LOGO,location.href).href;
+}
+
 function numeroWpp() {
   let d=$('#f-tel').value.replace(/\D/g,'');
   if(d.length>=10&&d.lenth<=11)d='55'+d; // acrescenta o código do Brasil
@@ -140,8 +217,8 @@ const SUPABASE_KEY='sb_publishable_fDlT-_ymboO_TsmEzbtoiw_nF7gEC74';
 let sb=null;
 try{sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY)}catch(e){console.warn('Supabase indisponível',e)}
 
-const toRow=o=>({kind:o.kind,nome:o.nome,tel:o.tel||null,tipo:o.tipo||null,data:o.data,hora:o.hora||'',entrega:o.entrega||'',conv:parseInt(o.conv)||null,valor:+o.valor||0,sinal:+o.sinal||0,sinal_pct:o.sinalPct||null,status:o.kind==='comp'?null:(o.status||null),local_entrega:o.local||'',descr:o.desc||'',itens:o.itens||[]});
-const fromRow=r=>({id:r.id,kind:r.kind,nome:r.nome,tel:r.tel||'',tipo:r.tipo||'',data:r.data,hora:r.hora||'',entrega:r.entrega||'',conv:r.conv||'',valor:+r.valor||0,sinal:+r.sinal||0,sinalPct:r.sinal_pct==null?null:+r.sinal_pct,status:r.status||'',local:r.local_entrega||'',desc:r.descr||'',itens:r.itens||[]});
+const toRow=o=>({kind:o.kind,nome:o.nome,tel:o.tel||null,tipo:o.tipo||null,data:o.data,hora:o.hora||'',entrega:o.entrega||'',conv:parseInt(o.conv)||null,valor:+o.valor||0,sinal:+o.sinal||0,sinal_pct:o.sinalPct||null,status:o.kind==='comp'?null:(o.status||null),local_entrega:o.local||'',descr:o.desc||'',cpf:o.cpf||null,endereco:o.endereco||null,itens:o.itens||[]});
+const fromRow=r=>({id:r.id,kind:r.kind,nome:r.nome,tel:r.tel||'',tipo:r.tipo||'',data:r.data,hora:r.hora||'',entrega:r.entrega||'',conv:r.conv||'',valor:+r.valor||0,sinal:+r.sinal||0,sinalPct:r.sinal_pct==null?null:+r.sinal_pct,status:r.status||'',local:r.local_entrega||'',desc:r.descr||'',cpf:r.cpf||'',endereco:r.endereco||'',itens:r.itens||[]});
 
 async function salvarNuvem(o) {
   const row=toRow(o);
@@ -201,8 +278,8 @@ function card(o){
 }
 
 function render(){
-  $('#t-agenda').classList.toggle('on',tab==='agenda');$('#t-pedidos').classList.toggle('on',tab==='pedidos');
-  $('#app').innerHTML=tab==='agenda'?viewAgenda():viewPedidos();
+  ['agenda','pedidos','relatorio'].forEach(t=>$('#t-'+t).classList.toggle('on',tab===t));
+  $('#app').innerHTML=tab==='agenda'?viewAgenda():tab==='pedidos'?viewPedidos():viewRelatorio();
 }
 
 function viewAgenda(){
@@ -286,7 +363,9 @@ function viewRelatorio(){
   <div class="kpi"><span>Ticket médio</span><b>${R(conf.length?fat/conf.length:0)}</b></div>
   <div class="kpi"><span>Orçamentos em aberto ${aberto.length}</span><b>${R(soma(aberto,o=>+o.valor||0))}</b></div>
 </div>
-${tipos.length?`<h2>Por tipo de evento</h2><div class="item" style="cursor: default;">${tipos.map(([t,d])=>`<div class="rline"><span>${esc(t)} <span class="meta">· ${d.n}</span></span><b>${R(d.v)}</b></div>`).join('')}</div>`:''}`
+${tipos.length?`<h2>Por tipo de evento</h2><div class="item" style="cursor: default;">${tipos.map(([t,d])=>`<div class="rline"><span>${esc(t)} <span class="meta">· ${d.n}</span></span><b>${R(d.v)}</b></div>`).join('')}</div>`:''}
+<h2>Saldos a receber</h2>
+  ${receber.length?`<div class="item" style="cursor:default"><div class="meta">Total pendente: <b>${R(soma(receber,o=>pagto(o).saldo))}</b></div>${receber.map(linhaReceber).join('')}</div>`:'<div class="empty">Nenhum saldo pendente.</div>'}`;
 }
 
 function exportar(){
@@ -342,6 +421,7 @@ function openSheet(o){
   $('#f-local').value=o?o.local||'':'';$('#f-entrega').value=o?o.entrega||'':'';sinalModo=o&&o.sinalPct?'pct':'val';
   $('#f-sinal').value=o&&o.sinal?numValor(o.sinal):'';
   $('#f-pct').value=o&&o.sinalPct?fmtPct(o.sinalPct):'';
+  $('#f-cpf').value=o?o.cpf||'':'';$('#f-endcli').value=o?o.endereco||'':'';
   sincSinal();check();$('#ov').classList.add('open');setTimeout(()=>$('#f-nome').focus(),50);
 }
 const closeSheet=()=>$('#ov').classList.remove('open');
@@ -369,7 +449,7 @@ $('#b-save').onclick=async()=>{
     if(kind==='orc')Object.assign(o,{tel:$('#f-tel').value.trim(),tipo:$('#f-tipo').value,conv:$('#f-conv').value,
       valor:valorNum($('#f-valor').value),sinal:valorNum($('#f-sinal').value),
       sinalPct:sinalModo==='pct'?pctNum($('#f-pct').value):null,status:$('#f-status').value,
-      itens:lerItens(),local:$('#f-local').value.trim(),entrega:ent});
+      itens:lerItens(),local:$('#f-local').value.trim(),cpf:$('#f-cpf').value.trim(),endereco:$('#f-endcli').value.trim(),entrega:ent});
     btn.disabled=true;
     const salvo=await salvarNuvem(o);
     items=editing?items.map(x=>x.id===salvo.id?salvo:x):[...items,salvo];
@@ -440,6 +520,20 @@ document.addEventListener('click',async e=>{
   items=[];try{localStorage.removeItem(K)}catch(_){}
   render();mostrarLogin();
 });
+$('#t-relatorio').onclick=()=>{tab='relatorio';render()};
+document.addEventListener('click',async e=>{
+  const b=e.target.closest('[data-rm],[data-rec]');if(!b)return;
+  if(b.dataset.rm){rm+=+b.dataset.rm;if(rm<0){rm=11;ry--}if(rm>11){rm=0;ry++}render();return}
+  const o=items.find(x=>String(x.id)===b.dataset.rec);if(!o||!pagto(o))return;
+  if(!confirm('Marcar o saldo de '+o.nome+' ('+brl(pagto(o).saldo)+') como recebido?'))return;
+  b.disabled=true;
+  try{
+    const salvo=await salvarNuvem({...o,sinal:+o.valor,sinalPct:100});
+    items=items.map(x=>x.id===salvo.id?salvo:x);save();render();
+  }catch(err){alert('Não foi possível atualizar: '+(err.message||err));b.disabled=false}
+});
+$('#f-cpf').addEventListener('input',e=>{e.target.value=maskCpf(e.target.value)});
+$('#b-pdf').onclick=gerarContrato;
 render();iniciar();
 
 /* PWA: registra o service worker (funciona offline) */
