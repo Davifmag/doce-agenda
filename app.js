@@ -552,6 +552,15 @@ $('#b-tema').onclick=()=>{
 };
 iconeTema();
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',iconeTema);
+
+/* atualiza os dados quando o app volta para a tela e a cada 2 minutos */
+function podeAtualizar() {
+  return sb&&!$('#login').classList.contains('open')&&!$('#ov').classList.contains('open');
+}
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'&&podeAtualizar())carregar().catch(()=>{});
+});
+setInterval(()=>{if(document.visibilityState==='visible'&&podeAtualizar())carregar().catch(()=>{})},120000);
 render();iniciar();
 
 /* PWA: registra o service worker (funciona offline) */
