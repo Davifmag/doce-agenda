@@ -100,6 +100,76 @@ function montarMensagem() {
   return L.join('\n');
 }
 
+/* ===== Clientes ===== */
+function atualizarLista() {
+  const d=$('#lista-clientes');
+  if(d)d.innerHTML=clientes.map(c=>`<option value="${esc(c.nome)}">`).join('');
+}
+
+function listaClientes() {
+  const q=busca.trim().toLowerCase(),qd=q.replace(/\D/g,'');
+  const L=clientes.filter(c=>!q||c.nome.toLowerCase().includes(q)||(qd&&(c.tel||'').replace(/\D/g,'').includes(qd)))
+    .sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+  if(!L.length)return '<div class="empty">'+(clientes.length?'Nenhum cliente encontrado.':'Nenhum cliente ainda. Eles entram sozinhos quando você salva um orçamento.')+'</div>';
+  return L.map(c=>{
+    const P=items.filter(o=>o.clienteId===c.id),conf=P.filter(o=>o.status==='Confirmado');
+    return `<button class="item" data-cli="${c.id}">
+  <div class="top">
+    <div>
+      <b>${esc(c.nome)}</b>
+      <div class="meta">${esc(c.tel||'sem telefone')}</div>
+    </div>
+    <span class="badge s-Compromisso">${P.length} pedidos${P.length===1?'':'s'}</span>
+  </div>
+  ${conf.length?`<div class="meta">Confirmados: ${R(soma(conf,o=>+o.valor||0))}</div>`:''}
+</button>`
+  }).join('');
+}
+
+function viewClientes() {
+  return `<h1>Clientes</h1>
+<p class="sub">
+  ${clientes.length} cadastrado${clientes.length===1?'':'s'}
+</p>
+<input type="search" id="busca" placeholder="Buscar por nome ou telefone" value="${esc(busca)}" autocomplete="off" style="margin-bottom: 10px;">
+<button class="btn" id="b-novocli" style="width: 100%; margin-bottom: 10px;">+ Novo cliente</button>
+<div id="lista-cli">${listaClientes()}</div>`;
+}
+
+function abrirCliente(c) {
+  cliEd=c||null;
+  $('#c-t').textContent=c?'Editar cliente':'Novo cliente';
+  $('#c-nome').value=c?c.nome:'';
+  $('#c-tel').value=maskTel(c?c.tel||'':'');
+  $('#c-cpf').value=maskCpf(c?c.cpf||'':'');
+  $('#c-end').value=c?c.endereco||'':'';
+  $('#c-obs').value=c?c.obs||'':'';
+  $('#c-del').classList.toggle('hide',!c);
+  $('#c-novo').classList.toggle('hide',!c);
+  $('#c-alert').classList.add('hide');
+  const P=c?items.filter(o=>o.clienteId===c.id).sort((a,b)=>b.data.localeCompare(a.data)):[];
+  $('#c-hist').innerHTML=P.lenth?'<h2 style="font-size: 17px;">Pedidos</h2>'+P.map(o=>`<div class="rline">
+  <span>
+    ${esc(o.tipo||'Evento')} · ${dshort(o.data)}
+    <span class="meta"> · ${esc(o.status)}</span>
+  </span>
+  <b>${o.valor?brl(o.valor):''}</b>
+</div>`).join(''):'';
+   $('#ovc').classList.add('open');setTimeou(()=>$('#c-nome').focus(),50);
+}
+const fecharCliente=()=>$('#ovc').classList.remove('open');
+
+async function garantirCliente(o) {
+  if(o.kind!=='orc')return null;
+  const n=o.nome.trim().toLowerCase();
+  const c=clientes.find(x=>x.id===o.clienteId)||clientes.find(x=>x.nome.trim().toLowerCase()===n);
+  if(c)return c.id;
+  const {data,error}=await sb.from('clientes').insert({nome:o.nome.trim(),tel:o.tel||null,cpf:o.cpf||null,endereco:o.endereco||null}).select().single();
+  if(error)throw error;
+  clientes.push(data);atualizarLista();
+  return data.id;
+}
+
 /* ===== Contrato: editar aqui ===== */
 const CONTRATADA={nome:'Leandra Marcia Ferreira',doc:'CNPJ: 15.135.383/0001-82',end:'Rua Atilio Luchesi, 2880 - São Bernardo'};
 const CIDADE='Mirassol/SP';
@@ -209,6 +279,7 @@ const hAg=o=>o.entrega||o.hora; // horário que vale para a agenda
 
 let items=(()=>{try{const r=localStorage.getItem(K);if(r)return JSON.parse(r)}catch(e){}
 return []})();
+let clientes=[],clienteSel=null,cliEd=null,busca='';
 const save=()=>{try{localStorage.setItem(K,JSON.stringify(items))}catch(e){}};
 
 /* ===== Supabase ===== */
@@ -217,8 +288,8 @@ const SUPABASE_KEY='sb_publishable_fDlT-_ymboO_TsmEzbtoiw_nF7gEC74';
 let sb=null;
 try{sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY)}catch(e){console.warn('Supabase indisponível',e)}
 
-const toRow=o=>({kind:o.kind,nome:o.nome,tel:o.tel||null,tipo:o.tipo||null,data:o.data,hora:o.hora||'',entrega:o.entrega||'',conv:parseInt(o.conv)||null,valor:+o.valor||0,sinal:+o.sinal||0,sinal_pct:o.sinalPct||null,status:o.kind==='comp'?null:(o.status||null),local_entrega:o.local||'',descr:o.desc||'',cpf:o.cpf||null,endereco:o.endereco||null,itens:o.itens||[]});
-const fromRow=r=>({id:r.id,kind:r.kind,nome:r.nome,tel:r.tel||'',tipo:r.tipo||'',data:r.data,hora:r.hora||'',entrega:r.entrega||'',conv:r.conv||'',valor:+r.valor||0,sinal:+r.sinal||0,sinalPct:r.sinal_pct==null?null:+r.sinal_pct,status:r.status||'',local:r.local_entrega||'',desc:r.descr||'',cpf:r.cpf||'',endereco:r.endereco||'',itens:r.itens||[]});
+const toRow=o=>({kind:o.kind,nome:o.nome,tel:o.tel||null,tipo:o.tipo||null,data:o.data,hora:o.hora||'',entrega:o.entrega||'',conv:parseInt(o.conv)||null,valor:+o.valor||0,sinal:+o.sinal||0,sinal_pct:o.sinalPct||null,status:o.kind==='comp'?null:(o.status||null),local_entrega:o.local||'',descr:o.desc||'',cpf:o.cpf||null,endereco:o.endereco||null,cliente_id:o.clienteId||null,itens:o.itens||[]});
+const fromRow=r=>({id:r.id,kind:r.kind,nome:r.nome,tel:r.tel||'',tipo:r.tipo||'',data:r.data,hora:r.hora||'',entrega:r.entrega||'',conv:r.conv||'',valor:+r.valor||0,sinal:+r.sinal||0,sinalPct:r.sinal_pct==null?null:+r.sinal_pct,status:r.status||'',local:r.local_entrega||'',desc:r.descr||'',cpf:r.cpf||'',endereco:r.endereco||'',clienteId:r.cliente_id||null,itens:r.itens||[]});
 
 async function salvarNuvem(o) {
   const row=toRow(o);
@@ -229,11 +300,14 @@ async function salvarNuvem(o) {
 }
 
 async function carregar() {
-  const {data,error}=await sb.from('registros').select('*').order('data');
-  if(error)throw error;
-  items=data.map(fromRow);
-  save();
-  render();
+  const [r,c]=await Promise.all ([
+    sb.from('registros').select('*').order('data'),
+    sb.from('clientes').select('*').order('nome')
+  ]);
+  if(r.error)throw r.error;
+  if(c.error)throw c.error;
+  items=r.data.map(fromRow);clientes=c.data;
+  save();atualizarLista(),render();
 }
 
 function mostrarLogin(msg) {
@@ -278,8 +352,8 @@ function card(o){
 }
 
 function render(){
-  ['agenda','pedidos','relatorio'].forEach(t=>$('#t-'+t).classList.toggle('on',tab===t));
-  $('#app').innerHTML=tab==='agenda'?viewAgenda():tab==='pedidos'?viewPedidos():viewRelatorio();
+  ['agenda','pedidos','clientes','relatorio'].forEach(t=>$('#t-'+t).classList.toggle('on',tab===t));
+  $('#app').innerHTML=tab==='agenda'?viewAgenda():tab==='pedidos'?viewPedidos():tab==='clientes'?viewClientes():viewRelatorio();
 }
 
 function viewAgenda(){
@@ -412,7 +486,7 @@ function check(){const d=draft(),a=$('#alert');
 }
 
 function openSheet(o){
-  editing=o||null;$('#sh-t').textContent=o?'Editar':'Novo registro';
+  editing=o||null;clienteSel=o?o.clienteId||null:null;$('#sh-t').textContent=o?'Editar':'Novo registro';
   setKind(o?o.kind:'orc');
   $('#f-nome').value=o?o.nome:'';$('#f-tel').value=maskTel(o?o.tel||'':'');$('#f-tipo').value=o&&o.tipo?o.tipo:'Casamento';
   $('#f-data').value=isoBr(o?o.data:sel);$('#f-hora').value=o?o.hora||'':'';$('#f-conv').value=o&&o.conv||'';
@@ -445,12 +519,13 @@ $('#b-save').onclick=async()=>{
     if(!horaOk(hora))faltam.push('o horário do evento (hh:mm)');
     if(kind==='orc'&&!horaOk(ent))faltam.push('o horário de entrega (hh:mm)');
     if(faltam.length){al.textContent='Confira '+faltam.join(', ')+'.';al.classList.remove('hide');return}
-    const o={id:editing?editing.id:null,kind,nome,data,hora,desc:$('#f-desc').value.trim()};
+    const o={id:editing?editing.id:null,kind,nome,data,hora,desc:$('#f-desc').value.trim(),clienteId:clienteSel};
     if(kind==='orc')Object.assign(o,{tel:$('#f-tel').value.trim(),tipo:$('#f-tipo').value,conv:$('#f-conv').value,
       valor:valorNum($('#f-valor').value),sinal:valorNum($('#f-sinal').value),
       sinalPct:sinalModo==='pct'?pctNum($('#f-pct').value):null,status:$('#f-status').value,
       itens:lerItens(),local:$('#f-local').value.trim(),cpf:$('#f-cpf').value.trim(),endereco:$('#f-endcli').value.trim(),entrega:ent});
     btn.disabled=true;
+    o.clienteId=await garantirCliente(o);
     const salvo=await salvarNuvem(o);
     items=editing?items.map(x=>x.id===salvo.id?salvo:x):[...items,salvo];
     save();sel=data;const d=pd(data);vy=d.getFullYear();vm=d.getMonth();closeSheet();render();
@@ -517,7 +592,7 @@ $('#l-senha').addEventListener('keydown',e=>{if(e.key==='Enter')$('#l-entrar').c
 document.addEventListener('click',async e=>{
   if(!e.target.closest('#b-sair'))return;
   if(sb)await sb.auth.signOut();
-  items=[];try{localStorage.removeItem(K)}catch(_){}
+  items=[];clientes=[];try{localStorage.removeItem(K)}catch(_){}
   render();mostrarLogin();
 });
 $('#t-relatorio').onclick=()=>{tab='relatorio';render()};
@@ -561,6 +636,63 @@ document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState==='visible'&&podeAtualizar())carregar().catch(()=>{});
 });
 setInterval(()=>{if(document.visibilityState==='visible'&&podeAtualizar())carregar().catch(()=>{})},120000);
+$('#t-clientes').onclick=()=>{tab='clientes';render()};
+$('#ovc').onclick=e=>{if(e.target.id==='ovc')fecharCliente()};
+$('#c-cancel').onclick=fecharCliente;
+$('#c-tel').addEventListener('input',e=>{e.target.value=maskTel(e.target.value)});
+$('#c-cpf').addEventListener('input',e=>{e.target.value=maskCpf(e.target.value)});
+
+document.addEventListener('click',e=>{
+  const c=e.target.closest('[data-cli]');
+  if(c){abrirCliente(clientes.find(x=>x.id===c.dataset.cli));return}
+  if(e.target.closest('#b-novocli'))abrirCliente(null);
+});
+
+document.addEventListener('input',e=>{
+  if(e.target.id==='busca'){busca=e.target.value;$('#lista-cli').innerHTML=listaClientes()}
+});
+$('#f-nome').addEventListener('input',e=>{
+  const n=e.target.value.trim().toLowerCase();
+  const c=n?clientes.find(x=>x.nome.trim().toLowerCase()===n):null;
+  clienteSel=c?c.id:null;
+  if(c){
+    if(!$('#f-tel').value)$('#f-tel').value=maskTel(c.tel||'');
+    if(!$('#f-cpf').value)$('#f-cpf').value=maskCpf(c.cpf||'');
+    if(!$('#f-endcli').value)$('#f-endcli').value=c.endereco||'';
+  }
+});
+$('#c-save').onclick=async()=>{
+  const nome=$('#c-nome').value.trim(),al=$('#c-alert');
+  if(!nome){al.textContent='Informe o nome do cliente.';al.classList.remove('hide');return}
+  const row={nome,tel:$('#c-tel').value.trim()||null,cpf:$('#c-cpf').value.trim()||null,endereco:$('#c-end').value.trim()||null,obs:$('#c-obs').value.trim()||null};
+  const btn=$('#c-save');btn.disable=true;
+  try{
+    const q=cliEd?sb.from('clientes').update(row).eq('id',cliEd.id):sb.from('clientes').insert(row);
+    const {data,error}=await q.select().single();
+    if(error)throw error;
+    clientes=cliEd?clientes.map(x=>x.id===data.id?data:x):[...clientes,data];
+    atualizarLista();fecharCliente();render();
+  } catch(err){al.textContent='Erro ao salvar: '+(err.message||err);al.classList.remove('hide')}
+    finally{btn.disable=false}
+};
+$('#c-del').onclick=async()=>{
+  if(!confirm('Excluir este cliente? Os pedidos dele continuam salvos.'))return;
+  const {error}=await sb.from('clientes').delete().eq('id',cliEd.id);
+  if(error){alert('Não foi possível excluir: '+error.message);return}
+  const id=cliEd.id;
+  clientes=clientes.filter(x=>x.id!==id);
+  items=items.map(o=>o.clientId===id?{...o,clientId:null}:o);
+  atualizarLista();fecharCliente();render();
+};
+$('#c-novo').onclick=()=>{
+  const c=cliEd;fecharCliente();openSheet();
+  $('#f-nome').value=c.nome;
+  $('f-tel').value=maskTel(c.tel||'');
+  $('#f-cpf').value=maskCpf(c.cpf||'');
+  $('#f-endcli').value=c.endereco||'';
+  clienteSel=c.id;
+  check();
+};
 render();iniciar();
 
 /* PWA: registra o service worker (funciona offline) */

@@ -375,7 +375,7 @@ h2::first-letter {
     max-width:520px;
     margin:0 auto;
     display:grid;
-    grid-template-columns:1fr 1fr auto 1fr;
+    grid-template-columns:1fr 1fr auto 1fr 1fr;
     gap:10px;
     align-items:center
 }
@@ -609,4 +609,14 @@ input [readonly]{
     color: var(--ink);
     font-size: 20px;
     line-height: 1
+}
+
+.tab {
+    padding: 10px 2px;
+    font-size: 14px;
+}
+
+input[type=search] {
+    -webkit-appearance: none;
+    appearance: none;
 }

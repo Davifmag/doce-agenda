@@ -48,6 +48,7 @@
     <button class="tab" id="t-agenda">Agenda</button>
     <button class="tab" id="t-pedidos">Pedidos</button>
     <button class="fab" id="fab" aria-label="Novo registro">+</button>
+    <button class="tab" id="t-clientes">Clientes</button>
     <button class="tab" id="t-relatorio">Relatório</button>
   </div>
 </div>
@@ -63,13 +64,20 @@
       <button data-k="comp">Compromisso</button>
     </div>
     <label id="l-nome" for="f-nome">Cliente</label>
-    <input id="f-nome" autocomplete="off">
+    <input id="f-nome" autocomplete="off" list="lista-clientes">
+    <datalist id="lista-clientes"></datalist>
     <div class="orc">
       <label for="f-tel">WhatsApp</label>
       <input id="f-tel" type="tel" placeholder="(17) 90000-0000">
     </div>
-    <div class="orc"><label for="f-cpf">CPF do contratante</label><input id="f-cpf" inputmode="numeric" placeholder="000.000.000-00" maxlength="14" autocomplete="off"></div>
-    <div class="orc"><label for="f-endcli">Endereço do contratante</label><input id="f-endcli" autocomplete="off"></div>
+    <div class="orc">
+      <label for="f-cpf">CPF do contratante</label>
+      <input id="f-cpf" inputmode="numeric" placeholder="000.000.000-00" maxlength="14" autocomplete="off">
+    </div>
+    <div class="orc">
+      <label for="f-endcli">Endereço do contratante</label>
+      <input id="f-endcli" autocomplete="off">
+    </div>
     <div class="orc">
       <label for="f-tipo">Tipo de evento</label>
       <select id="f-tipo">
@@ -147,9 +155,36 @@
   </div>
 </div>
 
+<div class="ov" id="ovc">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="c-t">
+    <h2 id="c-t" style="margin-top: 0;">Cliente</h2>
+    <label for="c-nome">Nome</label>
+    <input id="c-nome" autocomplete="off">
+    <label for="c-tel">Telefone</label>
+    <input id="c-tel" type="tel" placeholder="(17) 90000-0000">
+    <label for="c-cpf">CPF</label>
+    <input id="c-cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00">
+    <label for="c-end">Endereço</label>
+    <input id="c-end" autocomplete="off">
+    <label for="c-obs">Observações</label>
+    <textarea id="c-obs" rows="2"></textarea>
+    <div id="c-hist"></div>
+    <div class="alert hide" id="c-alert"></div>
+    <div class="acts">
+      <button class="btn del hide" id="c-del">Excluir</button>
+      <button class="btn" id="c-cancel">Cancelar</button>
+      <button class="btn pri" id="c-save">Salvar</button>
+    </div>
+    <button type="button" class="btn hide" id="c-novo" style="width: 100%; margin-top: 10px;">Novo orçamento para este cliente</button>
+  </div>
+</div>
+
 <!-- ================================================================================= -->
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
+
+
+
