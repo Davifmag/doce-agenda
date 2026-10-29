@@ -155,7 +155,7 @@ function abrirCliente(c) {
   </span>
   <b>${o.valor?brl(o.valor):''}</b>
 </div>`).join(''):'';
-   $('#ovc').classList.add('open');setTimeou(()=>$('#c-nome').focus(),50);
+   $('#ovc').classList.add('open');setTimeout(()=>$('#c-nome').focus(),50);
 }
 const fecharCliente=()=>$('#ovc').classList.remove('open');
 

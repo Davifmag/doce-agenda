@@ -1,4 +1,3 @@
-// Mudou algum arquivo do app? Aumente o número da versão para forçar a atualização.
 const VERSION = 'v17';
 const CACHE = 'doces-' + VERSION;
 const ARQUIVOS = ['./', './index.html', './style.css', './app.js', './manifest.json',
