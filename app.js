@@ -687,7 +687,7 @@ $('#c-del').onclick=async()=>{
 $('#c-novo').onclick=()=>{
   const c=cliEd;fecharCliente();openSheet();
   $('#f-nome').value=c.nome;
-  $('f-tel').value=maskTel(c.tel||'');
+  $('#f-tel').value=maskTel(c.tel||'');
   $('#f-cpf').value=maskCpf(c.cpf||'');
   $('#f-endcli').value=c.endereco||'';
   clienteSel=c.id;
