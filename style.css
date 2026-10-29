@@ -620,3 +620,24 @@ input[type=search] {
     -webkit-appearance: none;
     appearance: none;
 }
+
+.status {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+    z-index: 3;
+    max-width: 496px;
+    margin: 0 auto;
+    background: var(--car-bg);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 8px 12px;
+    font-size: 14px;
+    text-align: center;
+}
+
+.status.err {
+    border-color: var(--red);
+}

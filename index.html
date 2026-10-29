@@ -23,7 +23,9 @@
 <body>
 <input type="file" id="f-imp" accept=".json,application/json" hidden>
 
-<!-- ===========================TELA DE LOGIN======================================== -->
+<!-- ================================================================================= -->
+<!-- ================================TELA DE LOGIN==================================== -->
+<!-- ================================================================================= -->
 
 <div class="ov open" id="login" style="align-items: center;background: var(--bg);">
   <div class="sheet" style="border-radius: 22px;margin: 16px;max-width: 420px;">
@@ -39,10 +41,12 @@
 </div>
 
 <!-- ================================================================================= -->
-<!-- ===========================RODAPÉ AGENDA | + | PEDIDOS=========================== -->
+<!-- =============RODAPÉ -> AGENDA | PEDIDOS | + | CLIENTES | RELATÓRIO=============== -->
+<!-- ================================================================================= -->
 
 <div class="app" id="app"></div>
 <button type="button" id="b-tema" class="tema"></button>
+<div id="status" class="status hide" role="status"></div>
 <div class="bar">
   <div>
     <button class="tab" id="t-agenda">Agenda</button>
@@ -55,6 +59,7 @@
 
 <!-- ================================================================================= -->
 <!-- ========================FORM DE CADASTRO DE PEDIDO=============================== -->
+<!-- ================================================================================= -->
 
 <div class="ov" id="ov">
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sh-t">

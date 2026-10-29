@@ -279,7 +279,11 @@ const hAg=o=>o.entrega||o.hora; // horário que vale para a agenda
 
 let items=(()=>{try{const r=localStorage.getItem(K);if(r)return JSON.parse(r)}catch(e){}
 return []})();
-let clientes=[],clienteSel=null,cliEd=null,busca='';
+//let clientes=[],clienteSel=null,cliEd=null,busca='';
+const KC='doces-clientes',KF='doces-fila',KS='doces-sessao';
+const lerLS=(k,pad)=>{try{return JSON.parse(localStorage.getItem(k))||pad}catch(e){return pad}};
+let clientes=lerLS(KC,[]),clienteSel=null,cliEd=null,busca='';
+let fila=lerLS(KF,[]),sincronizando=false;
 const save=()=>{try{localStorage.setItem(K,JSON.stringify(items))}catch(e){}};
 
 /* ===== Supabase ===== */
@@ -291,6 +295,65 @@ try{sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY)}catch(e){console.
 const toRow=o=>({kind:o.kind,nome:o.nome,tel:o.tel||null,tipo:o.tipo||null,data:o.data,hora:o.hora||'',entrega:o.entrega||'',conv:parseInt(o.conv)||null,valor:+o.valor||0,sinal:+o.sinal||0,sinal_pct:o.sinalPct||null,status:o.kind==='comp'?null:(o.status||null),local_entrega:o.local||'',descr:o.desc||'',cpf:o.cpf||null,endereco:o.endereco||null,cliente_id:o.clienteId||null,itens:o.itens||[]});
 const fromRow=r=>({id:r.id,kind:r.kind,nome:r.nome,tel:r.tel||'',tipo:r.tipo||'',data:r.data,hora:r.hora||'',entrega:r.entrega||'',conv:r.conv||'',valor:+r.valor||0,sinal:+r.sinal||0,sinalPct:r.sinal_pct==null?null:+r.sinal_pct,status:r.status||'',local:r.local_entrega||'',desc:r.descr||'',cpf:r.cpf||'',endereco:r.endereco||'',clienteId:r.cliente_id||null,itens:r.itens||[]});
 
+/* ===== Fila offline ===== */
+const novoId=()=>crypto.randomUUID?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==='x'?r:(r&3|8)).toString(16)});
+const salvarFila=()=>{try{localStorage.setItem(KF,JSON.stringify(fila))}catch(e){}};
+const ehTransitorio=e=>!navigator.onLine||/fetch|network|load failed|timeout|jwt|expired/i.test(String((e&&e.message)||e));
+const pl=n=>n+(n===1?' alteração':'alterações');
+
+function enfileirar(op) {
+  fila=fila.filter(x=>x.id!==op.id); // só a última operação de cada registro vale
+  fila.push(op);salvarFila();barra();
+}
+
+function aplicarFila(L) {
+  fila=forEach(op=>{
+    if(op.tipo==='excluir')L=L.filter('x=>x.id!==op.id');
+    else if(L.some(x=>x.id===op.id))L=L.map(x=>x.id===op.id?op.dado:x);
+    else L=[...L,op.dado];
+  });
+  return L;
+}
+
+async function enviar(op) {
+  if(op.tipo==='excluir'){
+    const {error}=await sb.from('registros').delete();eq('id',op.id);
+    if(error)throw error;return;
+  }
+  const o={...op.dado};
+  if(o.kind==='orc'&&!o.clienteId)o.clienteId=await garantirCliente(o);
+  const {data,error}=await sb.from('registros').upsert({id:o.id,...toRow(o)}).select().single();
+  if(error)throw error;return;
+  items=items.map(x=>x.id===o.id?fromRow(data):x);
+}
+
+async function sincronizar() {
+  if(sincronizando||!sb||!fila.some(x=>!x.erro))return;
+  if(!navigator.onLine){barra();return}
+  sincronizando=true;barra();
+  try{
+    const {data:{session}}=await sb.auth.getSession();
+    if(!session)return;
+    for(const op of [...fila]){
+      if(op.erro)continue;
+      try{await enviar(op);fila=fila.filter(x=>x!==op);salvarFila()}
+      catch(e){if(ehTransitorio(e))break;op.erro=e.message||String(e);salvarFila()}
+    }
+  } catch(e){console.warn('Sincronização interrompida',e)}
+  finally{sincronizando=false;save();barra();render()}
+}
+
+function barra() {
+  const b=$('#status');if(!b)return;
+  const n=fila.length,e=fila.filter(x=>x.erro).length;
+  let t='';
+  if(e)t=pl(e)+' como erro. <button class="btn small" id="b-fila">Ver</button>';
+  else if(!navigator.onLine)t='Sem internet'+(n?' · '+pl(n)+' para enviar':' · mostrando os últimos dados salvos');
+  else if(n)t=sincronizando?'Enviando '+pl(n)+'...':pl(n)+' aguardando envio';
+  if(!t){b.classList.add('hide');return}
+  b.innerHTML=t;b.classList.remove('hide');b.classList.toggle('err',e>0);
+}
+
 async function salvarNuvem(o) {
   const row=toRow(o);
   const q=o.id?sb.from('registros').update(row).eq('id',o.id):sb.from('registros').insert(row);
@@ -300,14 +363,24 @@ async function salvarNuvem(o) {
 }
 
 async function carregar() {
-  const [r,c]=await Promise.all ([
+  await sincronizar();
+  const [r,c]=await Promise.all([
+    sb.from('registros').select('*').order('data'),
+    sb.from('clientes').select('*').order('nome')]);
+  if(r.error)throw r.error;
+  if(c.error)throw c.error;
+  clientes=c.data;
+  items=aplicarFila(r.data.map(fromRow));
+  try{localStorage.setItem(KC,JSON.stringify(clientes))}catch(e){}
+  save();atualizarLista();render();barra();
+  /*const [r,c]=await Promise.all ([
     sb.from('registros').select('*').order('data'),
     sb.from('clientes').select('*').order('nome')
   ]);
   if(r.error)throw r.error;
   if(c.error)throw c.error;
   items=r.data.map(fromRow);clientes=c.data;
-  save();atualizarLista(),render();
+  save();atualizarLista(),render();*/
 }
 
 function mostrarLogin(msg) {
