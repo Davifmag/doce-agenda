@@ -700,7 +700,7 @@ $('#l-senha').addEventListener('keydown',e=>{if(e.key==='Enter')$('#l-entrar').c
 document.addEventListener('click',async e=>{
   if(!e.target.closest('#b-sair'))return;
   if(fila.length&&!confirm('Há alterações ainda não enviadas. Sair agora vai descartá-las. Sair mesmo assim?'))return;
-  if(sb){try{await sb.auth.signOut()}catch(_){}}
+  if(sb){try{await sb.auth.signOut({scope:'local'})}catch(_){}}
   fila=[];salvarFila();items=[];clientes=[];
   try{localStorage.removeItem(K);localStorage.removeItem(KC);localStorage.removeItem(KS)}catch(_){}
   render();barra();mostrarLogin();
