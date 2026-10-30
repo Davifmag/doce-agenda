@@ -614,7 +614,7 @@ $('#t-agenda').onclick=()=>{tab='agenda';render()};
 $('#t-pedidos').onclick=()=>{tab='pedidos';render()};
 $('#b-save').onclick=()=>{
   const al=$('#alert');al.classList.add('hide');
-  const nome=$('#f-nome').value.trim(),data=brIso($('f-data').value),hora=$('#f-hora').value,ent=$('#f-entrega').value;
+  const nome=$('#f-nome').value.trim(),data=brIso($('#f-data').value),hora=$('#f-hora').value,ent=$('#f-entrega').value;
   const faltam=[];
   if(!nome)faltam.push('o nome');
   if(!data)faltam.push('a data (dd/mm/aaaa)');
