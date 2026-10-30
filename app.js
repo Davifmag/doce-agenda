@@ -392,7 +392,27 @@ function mostrarLogin(msg) {
 }
 
 async function iniciar() {
-  let session=null,logado=false;
+  let session=null,logado=false,expirou=false;
+  try{logado=localStorage.getItem(KS)==='1'}catch(e){}
+  if(sb){
+    try{
+      const r=await sb.auth.getSession();
+      if(r.error)throw r.error;
+      session=r.data.session;
+    } catch(e) {
+      if(/refresh token/i.test(String((e&&e.message)||e))){
+        try{await sb.auth.signOut({scope:'local'})}catch(_){}
+        logado=false;expirou=true;
+      }
+    }
+  }
+  if(session||(logado&&!navigator.onLine)){
+    $('#login').classList.remove('open');atualizarLista();barra();
+    if(navigator.onLine){try{await carregar()}catch(e){console.warn('Sem conexão, usando os dados salvos.',e)}}
+    return;
+  }
+  mostrarLogin(!sb?'Sem conexão com o serviço. Abra o app com internet.':expirou?'Sua sessão expirou. Entre novamente.':'');
+  /*let session=null,logado=false;
   try{logado=localStorage.getItem(KS)==='1'}catch(e){}
   if(sb){try{const r=await sb.auth.getSession();session=r.data.session}catch(e){}}
   if(session||(logado&&!navigator.onLine)){
