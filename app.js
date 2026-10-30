@@ -354,13 +354,13 @@ function barra() {
   b.innerHTML=t;b.classList.remove('hide');b.classList.toggle('err',e>0);
 }
 
-async function salvarNuvem(o) {
+/*async function salvarNuvem(o) {
   const row=toRow(o);
   const q=o.id?sb.from('registros').update(row).eq('id',o.id):sb.from('registros').insert(row);
   const {data,error}=await q.select().single();
   if(error)throw error;
   return fromRow(data);
-}
+}*/
 
 async function carregar() {
   await sincronizar();
@@ -392,11 +392,20 @@ function mostrarLogin(msg) {
 }
 
 async function iniciar() {
-  if(!sb) {mostrarLogin('Sem conexão com o serviço. Abra o app com internet.');return}
+  let session=null,logado=false;
+  try{logado=localStorage.getItem(KS)==='1'}catch(e){}
+  if(sb){try{const r=await sb.auth.getSession();session=r.data.session}catch(e){}}
+  if(session||(logado&&!navigator.onLine)){
+    $('#login').classList.remove('open');atualizarLista();barra();
+    if(navigator.onLine){try{await carregar()}catch(e){console.warn('Sem conexão; usando os dados salvos.',e)}}
+    return;
+  }
+  mostrarLogin(sb?'':'Sem conexão com o serviço. Abra o app com internet.');
+  /*if(!sb) {mostrarLogin('Sem conexão com o serviço. Abra o app com internet.');return}
   const {data:{session}}=await sb.auth.getSession();
   if(!session){mostrarLogin();return}
   $('#login').classList.remove('open');
-  try{await carregar()}catch(e){console.warn('Sem conexão; mostrando os últimos dados salvos.',e)}
+  try{await carregar()}catch(e){console.warn('Sem conexão; mostrando os últimos dados salvos.',e)}*/
 }
 
 const now=new Date();
@@ -421,6 +430,7 @@ function card(o){
   <span class="badge s-${st}">${st}</span></div>
   ${p?'<div class="meta">'+p.txt+(o.status==='Confirmado'&&p.saldo>0?' · saldo até '+dshort(p.venc):'')+'</div>':''}
   ${o.status==='Confirmado'&&p&&p.saldo>0&&p.venc<iso(now)?'<div class="warn">Saldo a cobrar: o prazo já chegou</div>':''}
+  ${fila.some(x=>x.id===o.id)?'<div class="meta">Aguardando envio</div>':''}
   ${c?'<div class="warn">Atenção: há outro compromisso nesta data</div>':''}</button>`;
 }
 
@@ -526,6 +536,7 @@ function exportar(){
 }
 
 function importar(file){
+  if(!navigator.onLine){alert('Importar exige internet.');return}
   const r=new FileReader();
   r.onload=async()=>{
     try{
@@ -581,8 +592,26 @@ $('#seg').onclick=e=>{if(e.target.dataset.k)setKind(e.target.dataset.k)};
 ['f-data','f-status'].forEach(i=>$('#'+i).addEventListener('change',check));
 $('#t-agenda').onclick=()=>{tab='agenda';render()};
 $('#t-pedidos').onclick=()=>{tab='pedidos';render()};
-$('#b-save').onclick=async()=>{
-  const al=$('#alert'),btn=$('#b-save');
+$('#b-save').onclick=()=>{
+  const al=$('#alert');al.classList.add('hide');
+  const nome=$('#f-nome').value.trim(),data=brIso($('f-data').value),hora=$('#f-hora').value,ent=$('#f-entrega').value;
+  const faltam=[];
+  if(!nome)faltam.push('o nome');
+  if(!data)faltam.push('a data (dd/mm/aaaa)');
+  if(!horaOk(hora))faltam.push('o horário do evento (hh:mm)');
+  if(kind==='orc'&&!horaOk(ent))faltam.push('o horário de entrega (hh:mm)');
+  if(faltam.length){al.textContent='Confira '+faltam.join(', ')+'.';al.classList.remove('hide');return}
+  const o={id:editing?editing.id:novoId(),kind,nome,data,hora,desc:$('#f-desc').value.trim()};
+  if(kind==='orc'){
+    Object.assign(o,{tel:$('#f-tel').value.trim(),cpf:$('#f-cpf').value.trim(),endereco:$('#f-endcli').value.trim(),tipo:$('#f-tipo').value,conv:$('#f-conv').value,valor:valorNum($('#f-valor').value),sinal:valorNum($('#f-sinal').value),sinalPct:sinalModo==='pct'?pctNum($('f-pct').value):null,status:$('f-status').value,itens:lerItens(),local:$('#f-local').value.trim(),entrega:ent});
+    const c=clientes.find(x=>x.id===clienteSel)||clientes.find(x=>x.nome.trim().toLowerCase()===nome.toLowerCase());
+    o.clienteId=c?c.id:null;
+  }
+  items=editing?items.map(x=>x.id===o.id?o:x):[...items,o];
+  enfileirar({tipo:'salvar',id:o.id,dado:o,ts:Date.now()});
+  save();sel=data;const d=pd(data);vy=d.getFullYear();vm=d.getMonth();
+  closeSheet();render();sincronizar();
+  /*const al=$('#alert'),btn=$('#b-save');
   al.classList.add('hide');
   try{
     const nome=$('#f-nome').value.trim(),data=brIso($('#f-data').value),hora=$('#f-hora').value,ent=$('#f-entrega').value;
@@ -605,13 +634,18 @@ $('#b-save').onclick=async()=>{
   }catch(e){
     console.error(e);
     al.textContent='Erro ao salvar: '+(e.message||e);al.classList.remove('hide');
-  }finally{btn.disabled=false}
+  }finally{btn.disabled=false}*/
 };
 $('#b-del').onclick=async()=>{
   if(!confirm('Excluir este registro?'))return;
+  const id=editing.id;
+  items=items.filter(x=>x.id!==id);
+  enfileirar({tipo:'excluir',id,ts:Date.now()});
+  save();closeSheet();render();sincronizar();
+  /*if(!confirm('Excluir este registro?'))return;
   const {error}=await sb.from('registros').delete().eq('id',editing.id);
   if(error){alert('Não foi possível excluir: '+error.message);return}
-  items=items.filter(x=>x.id!==editing.id);save();closeSheet();render();
+  items=items.filter(x=>x.id!==editing.id);save();closeSheet();render();*/
 };
 $('#app').onclick=e=>{
   const t=e.target.closest('[data-id],[data-d],[data-m],[data-f]');if(!t)return;
@@ -658,15 +692,22 @@ $('#l-entrar').onclick=async()=>{
   if(!sb)return;
   const {error}=await sb.auth.signInWithPassword({email:$('#l-email').value.trim(),password:$('#l-senha').value});
   if(error){mostrarLogin('e-Mail ou senha incorretos.');return}
+  try{localStorage.setItems(KS,'1')}catch(e){}
   $('#l-senha').value='';$('#login').classList.remove('open');
   try{await carregar()}catch(e){alert('Não foi possível carregar os dados: '+(e.message||e))}
 };
 $('#l-senha').addEventListener('keydown',e=>{if(e.key==='Enter')$('#l-entrar').click()});
 document.addEventListener('click',async e=>{
   if(!e.target.closest('#b-sair'))return;
+  if(fila.length&&!confirm('Há alterações ainda não enviadas. Sair agora vai descartá-las. Sair mesmo assim?'))return;
+  if(sb){try{await sb.auth.signOut()}catch(_){}}
+  fila=[];salvarFila();items=[];clientes=[];
+  try{localStorage.removeItem(K);localStorage.removeItem(KC);localStorage.removeItem(KS)}catch(_){}
+  render();barra();mostrarLogin();
+  /*if(!e.target.closest('#b-sair'))return;
   if(sb)await sb.auth.signOut();
   items=[];clientes=[];try{localStorage.removeItem(K)}catch(_){}
-  render();mostrarLogin();
+  render();mostrarLogin();*/
 });
 $('#t-relatorio').onclick=()=>{tab='relatorio';render()};
 document.addEventListener('click',async e=>{
@@ -674,11 +715,15 @@ document.addEventListener('click',async e=>{
   if(b.dataset.rm){rm+=+b.dataset.rm;if(rm<0){rm=11;ry--}if(rm>11){rm=0;ry++}render();return}
   const o=items.find(x=>String(x.id)===b.dataset.rec);if(!o||!pagto(o))return;
   if(!confirm('Marcar o saldo de '+o.nome+' ('+brl(pagto(o).saldo)+') como recebido?'))return;
-  b.disabled=true;
+  const novo={...o,sinal:+o.valor,sinalPct:100};
+  items=items.map(x=>x.id===o.id?novo:x);
+  enfileirar({tipo:'salvar',id:o.id,dado:novo,ts:Date.now()});
+  save();render();sincronizar();
+  /*b.disabled=true;
   try{
     const salvo=await salvarNuvem({...o,sinal:+o.valor,sinalPct:100});
     items=items.map(x=>x.id===salvo.id?salvo:x);save();render();
-  }catch(err){alert('Não foi possível atualizar: '+(err.message||err));b.disabled=false}
+  }catch(err){alert('Não foi possível atualizar: '+(err.message||err));b.disabled=false}*/
 });
 $('#f-cpf').addEventListener('input',e=>{e.target.value=maskCpf(e.target.value)});
 $('#b-pdf').onclick=gerarContrato;
@@ -735,6 +780,7 @@ $('#f-nome').addEventListener('input',e=>{
   }
 });
 $('#c-save').onclick=async()=>{
+  if(!navigator.onLine){alert('Para alterar clientes é preciso estar com internet.');return}
   const nome=$('#c-nome').value.trim(),al=$('#c-alert');
   if(!nome){al.textContent='Informe o nome do cliente.';al.classList.remove('hide');return}
   const row={nome,tel:$('#c-tel').value.trim()||null,cpf:$('#c-cpf').value.trim()||null,endereco:$('#c-end').value.trim()||null,obs:$('#c-obs').value.trim()||null};
@@ -749,6 +795,7 @@ $('#c-save').onclick=async()=>{
     finally{btn.disable=false}
 };
 $('#c-del').onclick=async()=>{
+  if(!navigator.onLine){alert('Para alterar clientes é preciso estar com internet.');return}
   if(!confirm('Excluir este cliente? Os pedidos dele continuam salvos.'))return;
   const {error}=await sb.from('clientes').delete().eq('id',cliEd.id);
   if(error){alert('Não foi possível excluir: '+error.message);return}
@@ -766,6 +813,19 @@ $('#c-novo').onclick=()=>{
   clienteSel=c.id;
   check();
 };
+addEventListener('online',()=>{
+  barra();
+  if(!$('#login').classList.contains('open'))carregar().catch(()=>{});
+});
+addEventListener('offline',barra);
+document.addEventListener('click',e=>{
+  if(!e.target.closest('#b-fila'))return;
+  const ops=fila.filter(x=>x.erro);
+  const msg=ops.map(x=>'• '+(x.dado?x.dado.nome:'exclusão')+': '+x.erro).join('\n');
+  if(confirm(msg+'\n\nDescartar essas alterações? (OK = descartar, Cancelar = manter)')){
+    fila=fila.filter(x=>!x.erro);salvarFila();barra();carregar().catch(()=>{});
+  }
+});
 render();iniciar();
 
 /* PWA: registra o service worker (funciona offline) */
