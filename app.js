@@ -307,7 +307,7 @@ function enfileirar(op) {
 }
 
 function aplicarFila(L) {
-  fila=forEach(op=>{
+  fila.forEach(op=>{
     if(op.tipo==='excluir')L=L.filter('x=>x.id!==op.id');
     else if(L.some(x=>x.id===op.id))L=L.map(x=>x.id===op.id?op.dado:x);
     else L=[...L,op.dado];
