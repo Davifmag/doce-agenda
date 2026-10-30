@@ -323,7 +323,7 @@ async function enviar(op) {
   const o={...op.dado};
   if(o.kind==='orc'&&!o.clienteId)o.clienteId=await garantirCliente(o);
   const {data,error}=await sb.from('registros').upsert({id:o.id,...toRow(o)}).select().single();
-  if(error)throw error;return;
+  if(error)throw error;
   items=items.map(x=>x.id===o.id?fromRow(data):x);
 }
 
@@ -623,7 +623,7 @@ $('#b-save').onclick=()=>{
   if(faltam.length){al.textContent='Confira '+faltam.join(', ')+'.';al.classList.remove('hide');return}
   const o={id:editing?editing.id:novoId(),kind,nome,data,hora,desc:$('#f-desc').value.trim()};
   if(kind==='orc'){
-    Object.assign(o,{tel:$('#f-tel').value.trim(),cpf:$('#f-cpf').value.trim(),endereco:$('#f-endcli').value.trim(),tipo:$('#f-tipo').value,conv:$('#f-conv').value,valor:valorNum($('#f-valor').value),sinal:valorNum($('#f-sinal').value),sinalPct:sinalModo==='pct'?pctNum($('f-pct').value):null,status:$('f-status').value,itens:lerItens(),local:$('#f-local').value.trim(),entrega:ent});
+    Object.assign(o,{tel:$('#f-tel').value.trim(),cpf:$('#f-cpf').value.trim(),endereco:$('#f-endcli').value.trim(),tipo:$('#f-tipo').value,conv:$('#f-conv').value,valor:valorNum($('#f-valor').value),sinal:valorNum($('#f-sinal').value),sinalPct:sinalModo==='pct'?pctNum($('#f-pct').value):null,status:$('#f-status').value,itens:lerItens(),local:$('#f-local').value.trim(),entrega:ent});
     const c=clientes.find(x=>x.id===clienteSel)||clientes.find(x=>x.nome.trim().toLowerCase()===nome.toLowerCase());
     o.clienteId=c?c.id:null;
   }
