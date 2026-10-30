@@ -317,7 +317,7 @@ function aplicarFila(L) {
 
 async function enviar(op) {
   if(op.tipo==='excluir'){
-    const {error}=await sb.from('registros').delete();eq('id',op.id);
+    const {error}=await sb.from('registros').delete().eq('id',op.id);
     if(error)throw error;return;
   }
   const o={...op.dado};
@@ -839,10 +839,13 @@ addEventListener('online',()=>{
 });
 addEventListener('offline',barra);
 document.addEventListener('click',e=>{
-  if(!e.target.closest('#b-fila'))return;
+   if(!e.target.closest('#b-fila'))return;
   const ops=fila.filter(x=>x.erro);
   const msg=ops.map(x=>'• '+(x.dado?x.dado.nome:'exclusão')+': '+x.erro).join('\n');
-  if(confirm(msg+'\n\nDescartar essas alterações? (OK = descartar, Cancelar = manter)')){
+  if(confirm(msg+'\n\nTentar enviar de novo? (OK = tentar, Cancelar = ver outras opções)')){
+    fila.forEach(x=>{delete x.erro});salvarFila();sincronizar();return;
+  }
+  if(confirm('Descartar essas alterações? Elas não serão enviadas.')){
     fila=fila.filter(x=>!x.erro);salvarFila();barra();carregar().catch(()=>{});
   }
 });
