@@ -34,7 +34,12 @@
     <label for="l-email">e-Mail</label>
     <input type="email" id="l-email" autocomplete="username">
     <label for="l-senha">Senha</label>
-    <input type="password" id="l-senha" autocomplete="current-password">
+    <div class="senha">
+      <input type="password" id="l-senha" autocomplete="
+      current-password">
+      <button type="button" id="b-olho" class="olho" aria-pressed="false" aria-label="Mostrar senha"></button>
+    </div>
+    <!--<input type="password" id="l-senha" autocomplete="current-password">-->
     <div class="alert hide" id="l-erro"></div>
     <div class="acts"><button class="btn pri" id="l-entrar">Entrar</button></div>
   </div>
@@ -169,8 +174,33 @@
     <input id="c-tel" type="tel" placeholder="(17) 90000-0000">
     <label for="c-cpf">CPF</label>
     <input id="c-cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00">
-    <label for="c-end">Endereço</label>
-    <input id="c-end" autocomplete="off">
+    <label for="c-cep">CEP</label>
+    <input id="c-cep" inputmode="numeric" maxlength="9" placeholder="00000-00" autocomplete="off">
+    <div class="meta" id="c-cep-msg"></div>
+    <label for="c-log">Logradouro</label>
+    <input id="c-log" autocomplete="off">
+    <div class="row">
+      <div>
+        <label for="c-num">Número</label>
+        <input id="c-num" autocomplete="off">
+      </div>
+      <div>
+        <label for="c-bairro">Bairro</label>
+        <input id="c-bairro" autocomplete="off">
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label for="c-cid">Cidade</label>
+        <input id="c-cid" autocomplete="off">
+      </div>
+      <div>
+        <label for="c-uf">Estado (UF)</label>
+        <input id="c-uf" maxlength="2" placeholder="SP" autocomplete="off">
+      </div>
+    </div>
+    <!--<label for="c-end">Endereço</label>
+    <input id="c-end" autocomplete="off">-->
     <label for="c-obs">Observações</label>
     <textarea id="c-obs" rows="2"></textarea>
     <div id="c-hist"></div>
@@ -181,6 +211,16 @@
       <button class="btn pri" id="c-save">Salvar</button>
     </div>
     <button type="button" class="btn hide" id="c-novo" style="width: 100%; margin-top: 10px;">Novo orçamento para este cliente</button>
+  </div>
+</div>
+<div class="ov" id="dlg" style="z-index: center; align-items: center;">
+  <div class="sheet" role="alertdialog" aria-modal="true" aria-labelledby="dlg-t" aria-describedby="dlg-m" style="border-radius: 22px;margin: 16px; width: calc(100% - 32px);max-width: 400px;">
+    <h2 id="dlg-t" style="margin-top: 0;"></h2>
+    <p id="dlg-m" style="white-space: pre-line; margin: 0 0 4px;"></p>
+    <div class="acts">
+      <button class="btn" id="dlg-n"></button>
+      <button class="btn pri" id="dlg-s"></button>
+    </div>
   </div>
 </div>
 

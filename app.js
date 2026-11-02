@@ -39,6 +39,33 @@ function atualizarSaldo() {
   $('#saldo').textContent=v?(s>=v?'Pago por completo':'Saldo a receber: '+brl(v-s)+(d?' · até '+dshort(vencSaldo(d)):'')):'';
 }
 
+/* ===== Diálogos do app ===== */
+function dialogo({titulo='',msg='',ok='OK',cancelar='Cancelar',mostrarCancelar=true,perigo=false}){
+  return new Promise(res=>{
+    const d=$('#dlg'),s=$('#dlg-s'),n=$('#dlg-n');
+    $('#dlg-t').textContent=titulo;$('#dlg-t').classList.toggle('hide',!titulo);
+    $('#dlg-m').textContent=msg;
+    s.textContent=ok;
+    n.textContent=cancelar;
+    n.classList.toggle('hide',!mostrarCancelar);
+    s.classList.toggle('perigo',perigo);
+    s.classList.toggle('pri',!perigo);
+    const tecla=e=>{if(e.key==='Escape'){e.stopPropagation();fechar(false)}};
+    const fechar=v=>{
+      d.classList.remove('open');s.onclick=n.onclick=d.onclick=null;
+      document.removeEventListener('keydown',tecla,true);res(v);
+    };
+    s.onclick=()=>fechar(true);
+    n.onclick=()=>fechar(false);
+    d.onclick=e=>{if(e.targer===d)fechar(false)};
+    document.addEventListener('keydown',tecla,true);
+    d.classList.add('open');
+    setTimeout(()=>(perigo&&mostrarCancelar?n:s).focus(),50);
+  });
+}
+const confirmar=(msg,opc={})=>dialogo({msg,...opc});
+const aviso=(msg,titulo='')=>dialogo({titulo,msg,ok:'Entendi',mostrarCancelar:false});
+
 /* sinal: valor e porcentagem sincronizados */
 let sinalModo='val'; // 'val' = o usuário digitou o valor; 'pct' = digitou a porcentagem
 const pctNum=s=>parseFloat((s||'').replace(',','.'))||0;
@@ -119,7 +146,7 @@ function listaClientes() {
       <b>${esc(c.nome)}</b>
       <div class="meta">${esc(c.tel||'sem telefone')}</div>
     </div>
-    <span class="badge s-Compromisso">${P.length} pedidos${P.length===1?'':'s'}</span>
+    <span class="badge s-Compromisso">${P.length} pedido${P.length===1?'':'s'}</span>
   </div>
   ${conf.length?`<div class="meta">Confirmados: ${R(soma(conf,o=>+o.valor||0))}</div>`:''}
 </button>`
@@ -142,7 +169,15 @@ function abrirCliente(c) {
   $('#c-nome').value=c?c.nome:'';
   $('#c-tel').value=maskTel(c?c.tel||'':'');
   $('#c-cpf').value=maskCpf(c?c.cpf||'':'');
-  $('#c-end').value=c?c.endereco||'':'';
+  const temPartes=c&&(c.cep||c.logradouro||c.numero||c.bairro||c.cidade||c.uf);
+  $('#c-cep').value=maskCep(c?c.cep||'':'');
+  $('#c-log').value=c?(temPartes?c.logradouro||'':c.endereco||''):'';
+  $('#c-num').value=c?c.numero||'':'';
+  $('#c-bairro').value=c?c.bairro||'':'';
+  $('#c-cid').value=c?c.cidade||'':'';
+  $('#c-uf').value=c?c.uf||'':'';
+  $('#c-cep-msg').textContent=c&&c.endereco&&!temPartes?'Endereço antigo colocado em Logradouro. Separe nos campos abaixo.':'';
+  //$('#c-end').value=c?c.endereco||'':'';
   $('#c-obs').value=c?c.obs||'':'';
   $('#c-del').classList.toggle('hide',!c);
   $('#c-novo').classList.toggle('hide',!c);
@@ -170,6 +205,31 @@ async function garantirCliente(o) {
   return data.id;
 }
 
+const maskCep=v=>{v=v.replace(/\D/g,'').slice(0,8);return v.length>5?v.slice(0,5)+'-'+v.slice(5):v};
+function mostrarEndereco(p){
+  const rua=[p.logradouro,p.numero].filter(Boolean).join(', ');
+  const cid=[p.cidade,p.uf].filter(Boolean).join('/');
+  return [rua,p.bairro,cid,p.cep?'CEP '+p.cep:''].filter(Boolean).join(' - ');
+}
+async function buscarCEP() {
+  const cep=$('#c-cep').value.replace(/\D/g,''),msg=$('#c-cep-msg');
+  if(cep.length!==8){msg.textContent='';return}
+  if(!navigator.onLine){msg.textContent='Sem internet: preencha o endereço manualmente.';return}
+  msg.textContent='Buscando...';
+  try {
+    const r=await fetch('https://viacep.com.br/ws/'+cep+'/json/');
+    const d=await r.json();
+    if($('#c-cep').value.replace(/\D/g,'')!==cep)return; // o CEP mudou durante a busca
+    if(d.erro){msg.textContent='CEP não encontrado. Preencha manualmente.';return}
+    $('#c-log').value=d.logradouro||'';
+    $('#c-bairro').value=d.bairro||'';
+    $('#c-cid').value=d.localidade||'';
+    $('#c-uf').value=d.uf||'';
+    msg.textContent='';
+    $('#c-num').focus();
+  } catch(e){msg.textContent='Não foi possível buscar  o CEP. Preencha manualmente'}
+}
+
 /* ===== Contrato: editar aqui ===== */
 const CONTRATADA={nome:'Leandra Marcia Ferreira',doc:'CNPJ: 15.135.383/0001-82',end:'Rua Atilio Luchesi, 2880 - São Bernardo'};
 const CIDADE='Mirassol/SP';
@@ -182,9 +242,9 @@ const LOGO='logo.png'; // arquivo na pasta do projeto
 
 function gerarContrato(){
   const nome=$('#f-nome').value.trim(),data=brIso($('#f-data').value);
-  if(!nome||!data){alert('Preencha ao menos o nome e a data.');return}
+  if(!nome||!data){aviso('Preencha ao menos o nome e a data.');return}
   const itens=lerItens(),valor=valorNum($('#f-valor').value);
-  if(!valor){alert('Informe os itens ou o valor total antes de gerar o contrato.');return}
+  if(!valor){aviso('Informe os itens ou o valor total antes de gerar o contrato.');return}
   const sinal=Math.min(valorNum($('#f-sinal').value)||Math.round(valor*PCT_SINAL)/100,valor);
   const saldo=Math.max(valor-sinal,0),venc=vencSaldo(data),pct=Math.round(sinal/valor*10000)/100;
   const hora=$('#f-hora').value,ent=$('#f-entrega').value,local=$('#f-local').value.trim();
@@ -235,7 +295,7 @@ ${clausulas.map((c,i)=>`<div class="cl"><p><b>CLÁUSULA ${i+1}ª – ${c[0]}</b>
 </body></html>`;
 
   const w=window.open('','_blank');
-if(!w){alert('O navegador bloqueou a janela. Permita pop-ups para este site e tente de novo.');return}
+if(!w){aviso('O navegador bloqueou a janela. Permita pop-ups para este site e tente de novo.');return}
 const escrever=()=>{
   w.document.open();w.document.write(html);w.document.close();
   const img=w.document.querySelector('.marca');
@@ -384,6 +444,7 @@ async function carregar() {
 }
 
 function mostrarLogin(msg) {
+  if($('#b-olho'))mostrarSenha(false);
   $('#login').classList.add('open');
   const a=$('#l-erro');
   if(msg){
@@ -556,7 +617,7 @@ function exportar(){
 }
 
 function importar(file){
-  if(!navigator.onLine){alert('Importar exige internet.');return}
+  if(!navigator.onLine){aviso('Importar exige internet.');return}
   const r=new FileReader();
   r.onload=async()=>{
     try{
@@ -570,8 +631,8 @@ function importar(file){
         if(error)throw error;
         await carregar();
       }
-      alert(novos.length+' registros importados'+(d.itens.length>novos.length?' ('+(d.itens.length-novos.length)+' já existiam ou eram inválidos).':'.'));
-    }catch(e){alert('Não foi possível importar: '+(e.message==='formato'?'arquivo inválido.':e.message))}
+      aviso(novos.length+' registros importados'+(d.itens.length>novos.length?' ('+(d.itens.length-novos.length)+' já existiam ou eram inválidos).':'.'));
+    }catch(e){aviso('Não foi possível importar: '+(e.message==='formato'?'arquivo inválido.':e.message))}
   };
   r.readAsText(file);
 }
@@ -657,7 +718,8 @@ $('#b-save').onclick=()=>{
   }finally{btn.disabled=false}*/
 };
 $('#b-del').onclick=async()=>{
-  if(!confirm('Excluir este registro?'))return;
+  if(!await confirmar('Este registro será excluído.',{titulo:'Excluir registro',ok:'Excluir',perigo:true}))return;
+  //if(!confirm('Excluir este registro?'))return;
   const id=editing.id;
   items=items.filter(x=>x.id!==id);
   enfileirar({tipo:'excluir',id,ts:Date.now()});
@@ -704,7 +766,7 @@ $('#itens').addEventListener('input',e=>{
 $('#itens').addEventListener('click',e=>{if(e.target.closest('.x')){e.target.closest('.irow').remove();recalc()}});
 $('#f-entrega').addEventListener('input',e=>{e.target.value=maskHora(e.target.value);check()});
 $('#b-wpp').onclick=()=>{
-  if(!$('#f-nome').value.trim()||!brIso($('#f-data').value)){alert('Preencha ao menos o nome e a data');return}
+  if(!$('#f-nome').value.trim()||!brIso($('#f-data').value)){aviso('Preencha ao menos o nome e a data');return}
   if($('#f-status').value==='Novo')$('#f-status').value='Orçado';
   window.open('https://wa.me/'+numeroWpp()+'?text='+encodeURIComponent(montarMensagem()),'_blank');
 };
@@ -714,12 +776,13 @@ $('#l-entrar').onclick=async()=>{
   if(error){mostrarLogin('e-Mail ou senha incorretos.');return}
   try{localStorage.setItems(KS,'1')}catch(e){}
   $('#l-senha').value='';$('#login').classList.remove('open');
-  try{await carregar()}catch(e){alert('Não foi possível carregar os dados: '+(e.message||e))}
+  try{await carregar()}catch(e){aviso('Não foi possível carregar os dados: '+(e.message||e))}
 };
 $('#l-senha').addEventListener('keydown',e=>{if(e.key==='Enter')$('#l-entrar').click()});
 document.addEventListener('click',async e=>{
   if(!e.target.closest('#b-sair'))return;
-  if(fila.length&&!confirm('Há alterações ainda não enviadas. Sair agora vai descartá-las. Sair mesmo assim?'))return;
+  if(fila.length&&!await confirmar('Há alterações ainda não enviadas. Sair agora vai descartá-las.',{titulo:'Sair da conta',ok:'Sair mesmo',perigo:true}))return;
+ //if(fila.length&&!confirm('Há alterações ainda não enviadas. Sair agora vai descartá-las. Sair mesmo assim?'))return;
   if(sb){try{await sb.auth.signOut({scope:'local'})}catch(_){}}
   fila=[];salvarFila();items=[];clientes=[];
   try{localStorage.removeItem(K);localStorage.removeItem(KC);localStorage.removeItem(KS)}catch(_){}
@@ -734,7 +797,8 @@ document.addEventListener('click',async e=>{
   const b=e.target.closest('[data-rm],[data-rec]');if(!b)return;
   if(b.dataset.rm){rm+=+b.dataset.rm;if(rm<0){rm=11;ry--}if(rm>11){rm=0;ry++}render();return}
   const o=items.find(x=>String(x.id)===b.dataset.rec);if(!o||!pagto(o))return;
-  if(!confirm('Marcar o saldo de '+o.nome+' ('+brl(pagto(o).saldo)+') como recebido?'))return;
+  if(!await confirmar('Saldo de '+brl(pagto(o).saldo)+' de '+o.nome+'.',{titulo:'Marcar como recebido?',ok:'Marcar como recebido'}))return;
+  //if(!confirm('Marcar o saldo de '+o.nome+' ('+brl(pagto(o).saldo)+') como recebido?'))return;
   const novo={...o,sinal:+o.valor,sinalPct:100};
   items=items.map(x=>x.id===o.id?novo:x);
   enfileirar({tipo:'salvar',id:o.id,dado:novo,ts:Date.now()});
@@ -800,10 +864,12 @@ $('#f-nome').addEventListener('input',e=>{
   }
 });
 $('#c-save').onclick=async()=>{
-  if(!navigator.onLine){alert('Para alterar clientes é preciso estar com internet.');return}
+  if(!navigator.onLine){aviso('Para alterar clientes é preciso estar com internet.');return}
   const nome=$('#c-nome').value.trim(),al=$('#c-alert');
   if(!nome){al.textContent='Informe o nome do cliente.';al.classList.remove('hide');return}
-  const row={nome,tel:$('#c-tel').value.trim()||null,cpf:$('#c-cpf').value.trim()||null,endereco:$('#c-end').value.trim()||null,obs:$('#c-obs').value.trim()||null};
+  const p={cep:$('#c-cep').value.trim(),logradouro:$('#c-log').value.trim(),numero:$('#c-num').value.trim(),bairro:$('#c-bairro').value.trim(),cidade:$('#c-cid').value.trim(),uf:$('#c-uf').value.trim().toUpperCase()};
+  const row={nome,tel:$('#c-tel').value.trim()||null,cpf:$('#c-cpf').value.trim()||null,cep:p.cep||null,logradouro:p.logradouro||null,numero:p.numero||null,bairro:p.bairro||null,cidade:p.cidade||null,uf:p.uf||null,endereco:montarEndereco(p)||null,obs:$('#c-obs').value.trim()||null};
+  //const row={nome,tel:$('#c-tel').value.trim()||null,cpf:$('#c-cpf').value.trim()||null,endereco:$('#c-end').value.trim()||null,obs:$('#c-obs').value.trim()||null};
   const btn=$('#c-save');btn.disable=true;
   try{
     const q=cliEd?sb.from('clientes').update(row).eq('id',cliEd.id):sb.from('clientes').insert(row);
@@ -815,10 +881,11 @@ $('#c-save').onclick=async()=>{
     finally{btn.disable=false}
 };
 $('#c-del').onclick=async()=>{
-  if(!navigator.onLine){alert('Para alterar clientes é preciso estar com internet.');return}
-  if(!confirm('Excluir este cliente? Os pedidos dele continuam salvos.'))return;
+  if(!navigator.onLine){aviso('Para alterar clientes é preciso estar com internet.');return}
+  if(!await confirmar('Os pedidos dele(a) continuam salvos.',{titulo:'Excluir cliente',ok:'Excluir',perigo:true}))return;
+  //if(!confirm('Excluir este cliente? Os pedidos dele continuam salvos.'))return;
   const {error}=await sb.from('clientes').delete().eq('id',cliEd.id);
-  if(error){alert('Não foi possível excluir: '+error.message);return}
+  if(error){aviso('Não foi possível excluir: '+error.message);return}
   const id=cliEd.id;
   clientes=clientes.filter(x=>x.id!==id);
   items=items.map(o=>o.clientId===id?{...o,clientId:null}:o);
@@ -838,17 +905,34 @@ addEventListener('online',()=>{
   if(!$('#login').classList.contains('open'))carregar().catch(()=>{});
 });
 addEventListener('offline',barra);
-document.addEventListener('click',e=>{
+document.addEventListener('click',async e=>{
    if(!e.target.closest('#b-fila'))return;
   const ops=fila.filter(x=>x.erro);
   const msg=ops.map(x=>'• '+(x.dado?x.dado.nome:'exclusão')+': '+x.erro).join('\n');
-  if(confirm(msg+'\n\nTentar enviar de novo? (OK = tentar, Cancelar = ver outras opções)')){
+  if(await confirmar(msg,{titulo:'Alterações com erro',ok:'Tentar de novo',cancelar:'Outras opções'})){
+  //if(confirm(msg+'\n\nTentar enviar de novo? (OK = tentar, Cancelar = ver outras opções)')){
     fila.forEach(x=>{delete x.erro});salvarFila();sincronizar();return;
   }
-  if(confirm('Descartar essas alterações? Elas não serão enviadas.')){
+  if(await confirmar('Elas não serão envaidas',{titulo:'Descartar alterações?',ok:'Descartar',perigo:true})){
+  //if(confirm('Descartar essas alterações? Elas não serão enviadas.')){
     fila=fila.filter(x=>!x.erro);salvarFila();barra();carregar().catch(()=>{});
   }
 });
+$('#c-cep').addEventListener('input',e=>{e.target.value=maskCep(e.target.value);buscarCEP()});
+$('#c-uf').addEventListener('input',e=>{e.target.value=e.target.value.replace(/[^a-zA-Z]/g,'').toUpperCase().slice(0,2)});
+
+/* mostrar / ocultar senha */
+const OLHO_ON='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-with="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+const OLHO_OFF='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path d="M3 3l18 18"/></svg>';
+function mostrarSenha(ver) {
+  $('#l-senha').type=ver?'text':'password';
+  const b=$('#b-olho');
+  b.setAttribute('aria-pressed',String(ver));
+  b.setAttribute('aria-label',ver?'Ocultar senha':'Mostrar senha');
+  b.innerHTML=ver?OLHO_OFF:OLHO_ON;
+}
+$('#b-olho').onclick=()=>mostrarSenha($('#l-senha').type==='password');
+mostrarSenha(false);
 render();iniciar();
 
 /* PWA: registra o service worker (funciona offline) */

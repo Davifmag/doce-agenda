@@ -641,3 +641,37 @@ input[type=search] {
 .status.err {
     border-color: var(--red);
 }
+
+.btn.perigo {
+    background: var(--red);
+    color: var(--bg);
+    border-color: var(--red);
+}
+
+.senha {
+    position: relative;
+}
+
+.senha input {
+    padding-right: 48px;
+}
+
+.olho {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 42px;
+    height: 42px;
+    border: 0;
+    background: none;
+    color: var(--mute);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.olho[aria-pressed="true"] {
+    color: var(--berry);
+}
