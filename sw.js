@@ -1,4 +1,4 @@
-const VERSION = 'v19';
+const VERSION = 'v19.5';
 const CACHE = 'doces-' + VERSION;
 const ARQUIVOS = ['./', './index.html', './style.css', './app.js', './manifest.json',
   './icons/icon-192.png', './icons/icon-512.png','./logo.png'];

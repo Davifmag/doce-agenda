@@ -555,7 +555,7 @@ function viewPedidos(){
   <div class="chips">${F.map(f=>`<button class="chip${f===filter?' on':''}" data-f="${f}">${f}</button>`).join('')}</div>
   ${L.length?L.map(card).join(''):'<div class="empty">Nenhum pedido nesta situação.</div>'}
   <h2>Backup</h2>
-  <p class="sub">Salve uma cópia dos seus dados ou restaure de um arquivo.</p>
+  <p class="sub">Salve uma copia dos seus dados ou restaure de um arquivo.<br>${(()=>{try{const t=localStorage.getItem(KB);return t?'Último backup neste aparelho: '+new Date(t).toLocaleDateString('pt-BR'):'Nenhum backup feito neste aparelho ainda.'}catch(e){return ''}})()}</p>
   <div class="acts"><button class="btn" id="b-exp">Exportar</button><button class="btn" id="b-imp">Importar</button><button class="btn" id="b-sair">Sair da conta</button></div>`;
 }
 
@@ -606,18 +606,71 @@ ${tipos.length?`<h2>Por tipo de evento</h2><div class="item" style="cursor: defa
   ${receber.length?`<div class="item" style="cursor:default"><div class="meta">Total pendente: <b>${R(soma(receber,o=>pagto(o).saldo))}</b></div>${receber.map(linhaReceber).join('')}</div>`:'<div class="empty">Nenhum saldo pendente.</div>'}`;
 }
 
+const KB='doces-ultimo-backup';
 function exportar(){
-  const dados={app:'agenda-de-doces',versao:1,exportadoEm:new Date().toISOString(),itens:items};
+  const dados={
+    app:'agenda-de-doces',versao:2,exportadoEm:new Date().toISOString(),
+    itens:items,
+    clientes:clientes.map(({id,nome,tel,cpf,cep,logradouro,numero,bairro,cidade,uf,endereco,obs})=>
+      ({id,nome,tel,cpf,cep,logradouro,numero,bairro,cidade,uf,endereco,obs}))
+  };
+  const blob=new Blob([JSON.stringify(dados,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='doces-backup-'+iso(new Date())+'json';
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  try{localStorage.setItem(KB,new Date().toISOString())}catch(e){}
+  render();
+  /*const dados={app:'agenda-de-doces',versao:1,exportadoEm:new Date().toISOString(),itens:items};
   const blob=new Blob([JSON.stringify(dados,null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
   a.download='doces-backup-'+iso(new Date())+'.json';
   document.body.appendChild(a);a.click();a.remove();
-  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);*/
 }
 
 function importar(file){
   if(!navigator.onLine){aviso('Importar exige internet.');return}
+  const r=new FileReader();
+  r.onload=async()=>{
+    try{
+      const d=JSON.parse(r.result);
+      if(d.app!=='agenda-de-doces'||!Array.isArray(d.itens))throw new Error('formato');
+      const nm=s=>String(s||'').trim().toLowerCase();
+
+      /* 1. clientes que ainda não existem (comprando pelo nome) */
+      const jaTem=new Set(clientes.map(c=>nm(c.nome)));
+      const vistos=new Set();
+      const cliIns=(Array.isArray(d.clientes)?d.clientes:[])
+        .filter(c=>c&&c.nome&&!jaTem.has(nm(c.nome))&&!vistos.has(nm(c.nome))&&vistos.add(nm(c.nome)))
+        .map(c=>({nome:String(c.nome).trim(),tel:c.tel||null,cpf:c.cpf||null,cep:c.cep||null,logradouro:c.logradouro||null,numero:c.numero||null,bairro:c.bairro||null,cidade:c.cidade||null,uf:c.uf||null,endereco:c.endereco||null,obs:c.obs||null}));
+      if(cliIns.length){
+        const {error}=await sb.from('clientes').insert(cliIns);
+        if(error)throw error;
+      }
+      const {data:cs,error:ec}=await sb.from('clientes').select('*');
+      if(ec)throw ec;
+      clientes=cs;
+      const idPorNome=new Map(cs.map(c=>[nm(c.nome),c.id]));
+
+      /* 2. pedidos que ainda não existem, ligados ao cliente pelo nome */
+      const chave=o=>[o.kind,o.nome,o.data,o.hora||'',+o.valor||0].join('|');
+      const existentes=new Set(items.map(chave));
+      const novos=d.itens
+        .filter(o=>o&&o.nome&&/^\d{4}-\d{2}-\d{2}$/.test(o.data)&&!existentes.has(chave(o)))
+        .map(o=>({...o,clienteId:o.kind==='orc'?(idPorNome.get(nm(o.nome))||null):null}));
+      if(novos.length){
+        const {error}=await sb.from('registros').insert(novos.map(toRow));
+        if(error)throw error;
+      }
+      await carregar();
+      aviso(novos.length+' pedidos e '+cliIns.length+' clientes importados.'+(d.itens.length>novos.length?'/n'+(d.itens.length-novos.length)+' pedidos já existiam ou eram inválidos.':''));
+    }catch(e){aviso('Não foi possível importar: '+(e.message==='formato'?'arquivo inválido.':e.message))}
+  };
+  r.readAsText(file);
+  /*if(!navigator.onLine){aviso('Importar exige internet.');return}
   const r=new FileReader();
   r.onload=async()=>{
     try{
@@ -634,7 +687,7 @@ function importar(file){
       aviso(novos.length+' registros importados'+(d.itens.length>novos.length?' ('+(d.itens.length-novos.length)+' já existiam ou eram inválidos).':'.'));
     }catch(e){aviso('Não foi possível importar: '+(e.message==='formato'?'arquivo inválido.':e.message))}
   };
-  r.readAsText(file);
+  r.readAsText(file);*/
 }
 
 /* formulário */
